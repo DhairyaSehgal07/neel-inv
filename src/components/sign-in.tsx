@@ -36,6 +36,7 @@ export function SignIn() {
 
   const form = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
+    mode: 'onChange', // Validate on every change/keystroke
     defaultValues: {
       mobileNumber: '',
       password: '',

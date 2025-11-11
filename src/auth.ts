@@ -27,22 +27,10 @@ export const { auth, handlers } = NextAuth({
 
           const { mobileNumber, password } = parsed.data;
 
-          // 🟡 Manual login check (bypass DB)
-          if (mobileNumber === '8437702351' && password === '123456') {
-            return {
-              _id: 'de7e51c8-6f50-48d3-97c8-b52e364b1b09',
-              name: 'Aseem',
-              mobileNumber,
-              role: 'Admin',
-              isActive: true,
-            } as User;
-          }
-
-          // 🗃️ Commented out DB logic for now
-          /*
+          // 🗃️ Connect to DB
           await dbConnect();
 
-          // 🔍 1️⃣ Find user by mobile number
+          // 🔍 Find user by mobile number
           const user = await UserModel.findOne({ mobileNumber });
 
           if (!user) {
@@ -53,25 +41,21 @@ export const { auth, handlers } = NextAuth({
             throw new Error('Your account has been deactivated');
           }
 
-          // 🔑 2️⃣ Verify password
+          // 🔑 Verify password
           const isPasswordCorrect = await bcrypt.compare(password, user.password);
 
           if (!isPasswordCorrect) {
             throw new Error('Incorrect password');
           }
 
-          // ✅ Return user in NextAuth format
+          // ✅ Return user (single id field)
           return {
-            id: user._id?.toString() || '',
-            _id: user._id?.toString(),
+            id: String(user._id),
             name: user.name,
             mobileNumber: user.mobileNumber,
             role: user.role,
             isActive: user.isActive,
           } as User;
-          */
-
-          throw new Error('Invalid credentials');
         } catch (err) {
           const error = err as Error;
           throw new Error(error?.message || 'Authentication failed');
@@ -84,7 +68,7 @@ export const { auth, handlers } = NextAuth({
   callbacks: {
     async jwt({ token, user }: JWTCallbackParams) {
       if (user) {
-        token._id = user._id?.toString();
+        token.id = user.id;
         token.mobileNumber = user.mobileNumber;
         token.name = user.name;
         token.role = user.role;
@@ -95,7 +79,7 @@ export const { auth, handlers } = NextAuth({
     async session({ session, token }: SessionCallbackParams) {
       if (token) {
         session.user = {
-          _id: token._id,
+          id: token.id,
           mobileNumber: token.mobileNumber,
           name: token.name,
           role: token.role,
