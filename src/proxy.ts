@@ -1,20 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/auth";
 
 export const config = {
   matcher: ["/dashboard/:path*", "/sign-in", "/sign-up", "/", "/verify/:path*"],
 };
 
 export default async function proxy(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET,
-  });
+  // auth() automatically reads from request context in proxy
+  const session = await auth();
   const url = request.nextUrl;
+  console.log("session is: ", session);
 
   // If user is authenticated and tries to visit sign-in, sign-up, or home → redirect to dashboard
   if (
-    token &&
+    session &&
     (url.pathname.startsWith("/sign-in") ||
       url.pathname.startsWith("/sign-up") ||
       url.pathname.startsWith("/verify") ||
@@ -24,7 +23,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   // If user is not authenticated and tries to visit dashboard → redirect to sign-in
-  if (!token && url.pathname.startsWith("/dashboard")) {
+  if (!session && url.pathname.startsWith("/dashboard")) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
