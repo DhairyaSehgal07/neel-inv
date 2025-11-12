@@ -4,7 +4,7 @@ import { signIn } from 'next-auth/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { signInSchema, type SignInInput } from '@/schemas/signInSchema';
 
 import { Button } from '@/components/ui/button';
@@ -25,7 +25,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
-export function SignIn() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
@@ -129,5 +129,13 @@ export function SignIn() {
         </Form>
       </CardContent>
     </Card>
+  );
+}
+
+export function SignIn() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignInForm />
+    </Suspense>
   );
 }

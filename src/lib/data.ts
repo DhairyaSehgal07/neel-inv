@@ -20,7 +20,7 @@ export interface FabricLookupItem {
 }
 
 export interface ProcessDates {
-  calendaringDate?: string; // ISO date strings for simplicity in UI fixture
+  calendaringDate?: string; // ISO date strings
   greenBeltDate?: string;
   curingDate?: string;
   inspectionDate?: string;
@@ -43,58 +43,63 @@ export interface FabricInfo {
 }
 
 export interface Belt {
-  id: string; // internal uniq id
-  beltNumber: string; // visible number e.g. "Belt #14598"
+  id: string;
+  beltNumber: string;
+  rating?: string;
+  fabric?: FabricInfo;
   topCoverMm?: number;
   bottomCoverMm?: number;
   carcassMm?: number;
-  rating?: string;
-  fabric?: FabricInfo;
+  orderNumber?: string;
+  buyerName?: string;
+  orderDate?: string;
+  deliveryDeadline?: string;
   compound?: CompoundInfo;
   process?: ProcessDates;
+  status: 'Dispatched' | 'In Production';
   createdAt?: string;
-  updatedAt?: string;
 }
 
 /**
- * Fabric rating -> strength lookup (partial; add rest from the doc)
- * Use this in the UI to auto-fill fabric.strength when rating is selected.
+ * Complete Fabric rating -> strength lookup table from PRD
  */
 export const FABRIC_LOOKUP: FabricLookupItem[] = [
   { rating: '200/2', strength: 100 },
   { rating: '250/2', strength: 125 },
-  { rating: '300/2', strength: 150 },
-  { rating: '300/3', strength: 100 },
   { rating: '315/3', strength: 100 },
   { rating: '400/3', strength: 125 },
-  { rating: '450/3', strength: 150 },
-  { rating: '480/3', strength: 160 },
-  { rating: '500/2', strength: 250 },
   { rating: '500/3', strength: 160 },
-  { rating: '500/4', strength: 125 },
-  { rating: '600/2', strength: 300 },
-  { rating: '600/3', strength: 200 },
   { rating: '630/3', strength: 200 },
+  { rating: '400/4', strength: 100 },
+  { rating: '500/4', strength: 125 },
   { rating: '630/4', strength: 160 },
-  { rating: '650/4', strength: 160 },
-  { rating: '700/2', strength: 350 },
-  { rating: '750/3', strength: 250 },
-  { rating: '800/2', strength: 400 },
   { rating: '800/4', strength: 200 },
   { rating: '1000/4', strength: 250 },
   { rating: '1250/4', strength: 315 },
-  { rating: '1250/5', strength: 250 },
   { rating: '1400/4', strength: 350 },
+  { rating: '1250/5', strength: 250 },
   { rating: '1400/5', strength: 350 },
-  { rating: '1600/4', strength: 400 },
   { rating: '1600/5', strength: 315 },
   { rating: '1800/5', strength: 350 },
   { rating: '2000/5', strength: 400 },
-  // add remaining rows as needed
+  { rating: '600/3', strength: 200 },
+  { rating: '1050/3', strength: 350 },
+  { rating: '400/2', strength: 200 },
+  { rating: '700/2', strength: 350 },
+  { rating: '600/2', strength: 300 },
+  { rating: '300/2', strength: 150 },
+  { rating: '800/2', strength: 400 },
+  { rating: '750/3', strength: 250 },
+  { rating: '450/3', strength: 150 },
+  { rating: '300/3', strength: 100 },
+  { rating: '650/4', strength: 160 },
+  { rating: '480/3', strength: 160 },
+  { rating: '1600/4', strength: 400 },
+  { rating: '500/2', strength: 250 },
 ];
 
 /**
- * Some compound options for dropdowns in UI
+ * Compound options for dropdowns
  */
 export const COMPOUNDS: CompoundType[] = [
   'Nylon',
@@ -112,17 +117,19 @@ export const COMPOUNDS: CompoundType[] = [
 ];
 
 /**
- * Minimal holiday list for development/testing (ISO date strings)
+ * Holiday list (ISO date strings) - excludes Sundays and government holidays
  * Expand later from Settings UI
  */
 export const HOLIDAYS = [
-  '2025-01-26', // example: Republic Day (India)
+  '2025-01-26', // Republic Day (India)
   '2025-08-15', // Independence Day
-  // add sample dates as needed
+  '2025-10-02', // Gandhi Jayanti
+  '2025-11-01', // Diwali (example)
+  '2025-12-25', // Christmas
 ];
 
 /**
- * Seed sample belts to test UI forms / editing / list
+ * Sample belts for testing
  */
 export const SAMPLE_BELTS: Belt[] = [
   {
@@ -136,9 +143,15 @@ export const SAMPLE_BELTS: Belt[] = [
     compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10' },
     process: {
       calendaringDate: '2025-11-10',
+      greenBeltDate: '2025-11-10',
       curingDate: '2025-11-11',
       inspectionDate: '2025-11-14',
     },
+    orderNumber: 'ORD-2025-001',
+    buyerName: 'ABC Industries',
+    orderDate: '2025-10-15',
+    deliveryDeadline: '2025-11-30',
+    status: 'In Production',
     createdAt: '2025-11-01T08:00:00.000Z',
   },
   {
@@ -152,17 +165,23 @@ export const SAMPLE_BELTS: Belt[] = [
     compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08' },
     process: {
       calendaringDate: '2025-10-08',
+      greenBeltDate: '2025-10-08',
       curingDate: '2025-10-09',
       inspectionDate: '2025-10-12',
+      pidDate: '2025-10-15',
+      packagingDate: '2025-10-18',
       dispatchDate: '2025-10-20',
     },
+    orderNumber: 'ORD-2025-002',
+    buyerName: 'XYZ Corp',
+    orderDate: '2025-09-20',
+    deliveryDeadline: '2025-10-25',
+    status: 'Dispatched',
     createdAt: '2025-10-01T08:00:00.000Z',
   },
 ];
 
-
-// src/lib/data.ts
-
+// Legacy type for backward compatibility
 export type ReverseTrackingRecord = {
   id: string;
   batchNumber: string;

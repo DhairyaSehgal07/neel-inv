@@ -22,6 +22,7 @@ import {
   SidebarMenuButton,
   SidebarHeader,
 } from '@/components/ui/sidebar';
+import Image from 'next/image';
 
 // 🔧 Navigation structure for Neelkanth Rubber Mills
 const navigationItems = [
@@ -75,9 +76,13 @@ const AppSidebar = () => {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-2">
-          <h1 className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
-            Neelkanth
-          </h1>
+          <Image
+            src="https://github.com/evilrabbit.png"
+            alt="Neelkanth Rubber Mills Logo"
+            width={40}
+            height={40}
+            className="rounded-full"
+          />
         </div>
       </SidebarHeader>
 
@@ -94,11 +99,7 @@ const AppSidebar = () => {
 
                 return (
                   <SidebarMenuItem key={item.name}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={isActive}
-                      tooltip={item.name}
-                    >
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.name}>
                       <Link href={item.href}>
                         <Icon className="h-4 w-4" />
                         <span>{item.name}</span>
