@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.3](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.2...v0.2.3) (2025-11-14)
+
+
+### Features
+
+* enhance belt dialog with advanced tracking and UI components ([7324fe2](https://github.com/DhairyaSehgal07/neel-inv/commit/7324fe21ad899f75b0bac5c9db585bcbb150541f))
+
+
+### Bug Fixes
+
+* resolve authentication token null issue in production ([722528f](https://github.com/DhairyaSehgal07/neel-inv/commit/722528fe964d4d5a483d39e7b3a4fbbc93d4e31e))
+
 ### [0.2.2](///compare/v0.2.1...v0.2.2) (2025-11-12)
 
 
