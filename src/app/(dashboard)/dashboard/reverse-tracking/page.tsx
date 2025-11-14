@@ -122,7 +122,7 @@ export default function ReverseTrackingPage() {
             Trace belts back through raw materials, compounding, and processing stages
           </p>
         </div>
-        <NewBeltDialog onAdd={handleAddBelt} />
+      <NewBeltDialog onAdd={handleAddBelt} />
       </div>
 
       <DataTable
@@ -209,6 +209,12 @@ function BeltDetailView({ belt }: { belt: Belt }) {
             <CardTitle>Compound Information</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
+            {belt.compound.compoundId && (
+              <div className="col-span-2">
+                <p className="text-sm text-muted-foreground">Compound ID</p>
+                <p className="font-mono font-semibold text-base">{belt.compound.compoundId}</p>
+              </div>
+            )}
             <div>
               <p className="text-sm text-muted-foreground">Type</p>
               <p className="font-medium">{belt.compound.type || '-'}</p>
@@ -221,6 +227,12 @@ function BeltDetailView({ belt }: { belt: Belt }) {
               <p className="text-sm text-muted-foreground">Used On</p>
               <p className="font-medium">{formatDate(belt.compound.usedOn)}</p>
             </div>
+            {belt.compound.lotSize && (
+              <div>
+                <p className="text-sm text-muted-foreground">Lot Size / Batch Weight</p>
+                <p className="font-medium">{belt.compound.lotSize}</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

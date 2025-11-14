@@ -19,11 +19,18 @@ export interface FabricLookupItem {
   strength: number; // numeric strength lookup
 }
 
+export type EdgeType = 'Cut' | 'Moulded';
+export type TrackingMode = 'auto' | 'manual';
+
 export interface ProcessDates {
   calendaringDate?: string; // ISO date strings
+  calendaringMachine?: string; // Cal #
   greenBeltDate?: string;
+  greenBeltMachine?: string; // Table #
   curingDate?: string;
+  curingMachine?: string; // Press #
   inspectionDate?: string;
+  inspectionMachine?: string; // Inspection Press#
   pidDate?: string;
   packagingDate?: string;
   dispatchDate?: string;
@@ -33,6 +40,9 @@ export interface CompoundInfo {
   type?: CompoundType;
   producedOn?: string;
   usedOn?: string;
+  lotSize?: number; // Batch weight
+  batchWeight?: number; // Alternative name for lot size
+  compoundId?: string; // Generated ID: compoundType_date (e.g., "M-24_2025-11-03")
 }
 
 export interface FabricInfo {
@@ -40,6 +50,7 @@ export interface FabricInfo {
   rating?: string;
   strength?: number;
   supplier?: string;
+  rollNumber?: string;
 }
 
 export interface Belt {
@@ -49,6 +60,9 @@ export interface Belt {
   fabric?: FabricInfo;
   topCoverMm?: number;
   bottomCoverMm?: number;
+  edge?: EdgeType;
+  breakerPly?: boolean;
+  breakerPlyRemarks?: string;
   carcassMm?: number;
   orderNumber?: string;
   buyerName?: string;
@@ -57,6 +71,7 @@ export interface Belt {
   compound?: CompoundInfo;
   process?: ProcessDates;
   status: 'Dispatched' | 'In Production';
+  trackingMode?: TrackingMode; // 'auto' or 'manual' for In Production belts
   createdAt?: string;
 }
 
@@ -140,7 +155,7 @@ export const SAMPLE_BELTS: Belt[] = [
     bottomCoverMm: 3,
     carcassMm: 0,
     fabric: { type: 'EP', rating: '630/4', strength: 160, supplier: 'Alpha Fabrics' },
-    compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10' },
+    compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10', compoundId: 'Layer3_2025-11-03' },
     process: {
       calendaringDate: '2025-11-10',
       greenBeltDate: '2025-11-10',
@@ -162,7 +177,7 @@ export const SAMPLE_BELTS: Belt[] = [
     bottomCoverMm: 2,
     carcassMm: 0,
     fabric: { type: 'NN', rating: '500/3', strength: 160, supplier: 'Beta Textiles' },
-    compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08' },
+    compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08', compoundId: 'FR_2025-10-01' },
     process: {
       calendaringDate: '2025-10-08',
       greenBeltDate: '2025-10-08',
