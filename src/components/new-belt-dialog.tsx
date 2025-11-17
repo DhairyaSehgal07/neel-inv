@@ -25,36 +25,66 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { calculateBackwardDates, parseDateString, formatDateString, getNextWorkingDay } from '@/lib/date-utils';
+// Keeping functions for future use when auto mode is re-enabled
+// import { calculateBackwardDates, parseDateString, formatDateString, getNextWorkingDay } from '@/lib/date-utils';
+import { parseDateString, formatDateString } from '@/lib/date-utils';
 import { EdgeType, TrackingMode } from '@/lib/data';
 
-export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }) {
-  const { register, handleSubmit, setValue, watch, reset } = useForm<Belt>();
-  const [open, setOpen] = useState(false);
+interface NewBeltDialogProps {
+  onAdd?: (belt: Belt) => void;
+  onUpdate?: (belt: Belt) => void;
+  belt?: Belt;
+  trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export default function NewBeltDialog({ onAdd, onUpdate, belt, trigger, open: controlledOpen, onOpenChange }: NewBeltDialogProps) {
+  const isEditMode = !!belt;
+  const { register, handleSubmit, setValue, watch, reset } = useForm<Belt>({
+    defaultValues: belt || {},
+  });
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
   const [activeTab, setActiveTab] = useState('step1');
 
+  // Populate form when editing
+  useEffect(() => {
+    if (belt && open) {
+      // Reset form with belt data
+      reset(belt);
+      setActiveTab('step1');
+    } else if (!belt && open) {
+      // Reset form for new belt
+      reset();
+      setActiveTab('step1');
+    }
+  }, [belt, open, reset]);
+
   const rating = watch('rating');
-  const status = watch('status');
+  // const status = watch('status'); // Unused for now - kept for future auto mode
   const trackingMode = watch('trackingMode') as TrackingMode | undefined;
   const breakerPly = watch('breakerPly');
   const calendaringDate = watch('process.calendaringDate');
-  const greenBeltDate = watch('process.greenBeltDate');
-  const curingDate = watch('process.curingDate');
-  const inspectionDate = watch('process.inspectionDate');
-  const pidDate = watch('process.pidDate');
-  const coverCompoundType = watch('compound.coverCompoundType');
-  const coverCompoundProducedOn = watch('compound.coverCompoundProducedOn');
-
+  // Unused for now - kept for future auto mode
+  // const greenBeltDate = watch('process.greenBeltDate');
+  // const curingDate = watch('process.curingDate');
+  // const inspectionDate = watch('process.inspectionDate');
+  // const pidDate = watch('process.pidDate');
+  // DISABLED: Manual mode only for now - keeping function for future auto mode use
+  // const coverCompoundType = watch('compound.coverCompoundType');
+  // const coverCompoundProducedOn = watch('compound.coverCompoundProducedOn');
   // Generate compoundId when both cover compound type and produced on date are available
-  const generateCompoundId = (type?: CompoundType, date?: string): string | undefined => {
-    if (type && date) {
-      // Format: M-24_2025-11-03
-      return `${type}_${date}`;
-    }
-    return undefined;
-  };
+  // const generateCompoundId = (type?: CompoundType, date?: string): string | undefined => {
+  //   if (type && date) {
+  //     // Format: M-24_2025-11-03
+  //     return `${type}_${date}`;
+  //   }
+  //   return undefined;
+  // };
 
-  const compoundId = generateCompoundId(coverCompoundType, coverCompoundProducedOn);
+  // const compoundId = generateCompoundId(coverCompoundType, coverCompoundProducedOn);
 
   // Auto-set compound.usedOn to calendaring date when calendaring date is set
   useEffect(() => {
@@ -63,16 +93,16 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
     }
   }, [calendaringDate, setValue]);
 
-  // Auto-calculate packaging date as one day after PID date (skipping Sundays and holidays)
-  // Only calculate if NOT in manual mode
-  useEffect(() => {
-    if (pidDate && trackingMode !== 'manual') {
-      const pidDateObj = parseDateString(pidDate);
-      const nextWorkingDay = getNextWorkingDay(pidDateObj);
-      const packagingDateStr = formatDateString(nextWorkingDay);
-      setValue('process.packagingDate', packagingDateStr);
-    }
-  }, [pidDate, trackingMode, setValue]);
+  // Auto-calculate packaging date as one day after PDI date (skipping Sundays and holidays)
+  // DISABLED: Manual mode only for now - keeping function for future use
+  // useEffect(() => {
+  //   if (pidDate && trackingMode !== 'manual') {
+  //     const pidDateObj = parseDateString(pidDate);
+  //     const nextWorkingDay = getNextWorkingDay(pidDateObj);
+  //     const packagingDateStr = formatDateString(nextWorkingDay);
+  //     setValue('process.packagingDate', packagingDateStr);
+  //   }
+  // }, [pidDate, trackingMode, setValue]);
 
   // Auto-fill fabric strength when rating is selected
   useEffect(() => {
@@ -86,70 +116,92 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
   }, [rating, setValue]);
 
   // Auto-calculate dates based on mode and latest stage
-  // Only calculate in Auto Mode for In Production belts
-  useEffect(() => {
-    if (status !== 'In Production' || trackingMode !== 'auto') {
-      return; // Manual mode or dispatched - no auto calculation
-    }
+  // DISABLED: Manual mode only for now - keeping function for future use
+  // useEffect(() => {
+  //   if (status !== 'In Production' || trackingMode !== 'auto') {
+  //     return; // Manual mode or dispatched - no auto calculation
+  //   }
 
-    // Determine latest stage entered
-    let latestStage: 'calendaringDate' | 'greenBeltDate' | 'curingDate' | 'inspectionDate' | null = null;
-    let latestDate: string | null = null;
+  //   // Determine latest stage entered
+  //   let latestStage: 'calendaringDate' | 'greenBeltDate' | 'curingDate' | 'inspectionDate' | null = null;
+  //   let latestDate: string | null = null;
 
-    if (inspectionDate) {
-      latestStage = 'inspectionDate';
-      latestDate = inspectionDate;
-    } else if (curingDate) {
-      latestStage = 'curingDate';
-      latestDate = curingDate;
-    } else if (greenBeltDate) {
-      latestStage = 'greenBeltDate';
-      latestDate = greenBeltDate;
-    } else if (calendaringDate) {
-      latestStage = 'calendaringDate';
-      latestDate = calendaringDate;
-    }
+  //   if (inspectionDate) {
+  //     latestStage = 'inspectionDate';
+  //     latestDate = inspectionDate;
+  //   } else if (curingDate) {
+  //     latestStage = 'curingDate';
+  //     latestDate = curingDate;
+  //   } else if (greenBeltDate) {
+  //     latestStage = 'greenBeltDate';
+  //     latestDate = greenBeltDate;
+  //   } else if (calendaringDate) {
+  //     latestStage = 'calendaringDate';
+  //     latestDate = calendaringDate;
+  //   }
 
-    // Calculate backward only (never forward in Auto Mode)
-    if (latestStage && latestDate) {
-      const calculated = calculateBackwardDates(latestStage, latestDate);
-      if (calculated.calendaringDate && !calendaringDate) {
-        setValue('process.calendaringDate', calculated.calendaringDate);
-      }
-      if (calculated.greenBeltDate && !greenBeltDate) {
-        setValue('process.greenBeltDate', calculated.greenBeltDate);
-      }
-      if (calculated.curingDate && !curingDate && latestStage !== 'curingDate') {
-        setValue('process.curingDate', calculated.curingDate);
-      }
-      if (calculated.inspectionDate && !inspectionDate && latestStage !== 'inspectionDate') {
-        setValue('process.inspectionDate', calculated.inspectionDate);
-      }
-    }
-  }, [status, trackingMode, calendaringDate, greenBeltDate, curingDate, inspectionDate, setValue]);
+  //   // Calculate backward only (never forward in Auto Mode)
+  //   if (latestStage && latestDate) {
+  //     const calculated = calculateBackwardDates(latestStage, latestDate);
+  //     if (calculated.calendaringDate && !calendaringDate) {
+  //       setValue('process.calendaringDate', calculated.calendaringDate);
+  //     }
+  //     if (calculated.greenBeltDate && !greenBeltDate) {
+  //       setValue('process.greenBeltDate', calculated.greenBeltDate);
+  //     }
+  //     if (calculated.curingDate && !curingDate && latestStage !== 'curingDate') {
+  //       setValue('process.curingDate', calculated.curingDate);
+  //     }
+  //     if (calculated.inspectionDate && !inspectionDate && latestStage !== 'inspectionDate') {
+  //       setValue('process.inspectionDate', calculated.inspectionDate);
+  //     }
+  //   }
+  // }, [status, trackingMode, calendaringDate, greenBeltDate, curingDate, inspectionDate, setValue]);
 
   const onSubmit = (data: Belt) => {
+    // DISABLED: Manual mode only for now - keeping logic for future auto mode use
     // Generate compoundId if not already set (use cover compound type and produced on date)
-    const finalCompoundId = data.compound?.compoundId || generateCompoundId(
-      data.compound?.coverCompoundType,
-      data.compound?.coverCompoundProducedOn
-    );
+    // const finalCompoundId = data.compound?.compoundId || generateCompoundId(
+    //   data.compound?.coverCompoundType,
+    //   data.compound?.coverCompoundProducedOn
+    // );
 
     // Ensure compound.usedOn is set to calendaring date
     const compoundUsedOn = data.process?.calendaringDate || data.compound?.usedOn;
 
-    const newBelt: Belt = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      status: data.status || 'In Production',
-      compound: data.compound ? {
-        ...data.compound,
-        compoundId: finalCompoundId,
-        usedOn: compoundUsedOn, // Auto-set to calendaring date
-      } : undefined,
-    };
-    onAdd(newBelt);
+    // Determine entryType based on trackingMode (default to Manual for now)
+    const entryType: 'Manual' | 'Auto' = data.trackingMode === 'auto' ? 'Auto' : 'Manual';
+
+    if (isEditMode && belt) {
+      // Update existing belt
+      const updatedBelt: Belt = {
+        ...belt,
+        ...data,
+        id: belt.id, // Keep original ID
+        createdAt: belt.createdAt, // Keep original creation date
+        status: data.status || belt.status,
+        entryType: entryType,
+        compound: data.compound ? {
+          ...data.compound,
+          usedOn: compoundUsedOn,
+        } : belt.compound,
+      };
+      onUpdate?.(updatedBelt);
+    } else {
+      // Create new belt
+      const newBelt: Belt = {
+        ...data,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString(),
+        status: data.status || 'In Production',
+        entryType: entryType,
+        compound: data.compound ? {
+          ...data.compound,
+          usedOn: compoundUsedOn,
+        } : undefined,
+      };
+      onAdd?.(newBelt);
+    }
     reset();
     setOpen(false);
     setActiveTab('step1');
@@ -167,16 +219,21 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          New Belt
-        </Button>
-      </DialogTrigger>
+      {!isEditMode && !trigger && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Belt
+          </Button>
+        </DialogTrigger>
+      )}
+      {trigger && !isEditMode && (
+        <div onClick={() => setOpen(true)}>{trigger}</div>
+      )}
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-xl font-semibold">
-            Create New Belt - Reverse Tracking
+            {isEditMode ? 'Edit Belt - Reverse Tracking' : 'Create New Belt - Reverse Tracking'}
           </DialogTitle>
         </DialogHeader>
 
@@ -357,6 +414,18 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
           </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="coverGrade" className="text-sm font-medium">
+                      Cover Grade
+                    </Label>
+                    <Input
+                      id="coverGrade"
+                      {...register('coverGrade')}
+                      placeholder="Enter cover grade"
+                      className="h-10"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <div className="flex items-center space-x-2">
                       <Switch
                         id="breakerPly"
@@ -458,9 +527,9 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                     onValueChange={(val) => {
                       const newStatus = val as 'Dispatched' | 'In Production';
                       setValue('status', newStatus);
-                      // Set default tracking mode for In Production
+                      // Set default tracking mode for In Production (manual for now)
                       if (newStatus === 'In Production' && !trackingMode) {
-                        setValue('trackingMode', 'auto');
+                        setValue('trackingMode', 'manual');
                       }
                     }}
                   >
@@ -509,6 +578,23 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                         className="h-10"
                       />
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fabricConsumed" className="text-sm font-medium">
+                      Fabric Consumed (meters)
+                    </Label>
+                    <Input
+                      id="fabricConsumed"
+                      type="number"
+                      step="0.1"
+                      {...register('fabric.consumedMeters', { valueAsNumber: true })}
+                      className="h-10"
+                      placeholder="e.g. 100.5"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Enter the amount of fabric consumed in meters
+                    </p>
                   </div>
 
                   {rating && (
@@ -562,18 +648,19 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                     </div>
                   </div>
 
-                  {compoundId && (
+                  {/* DISABLED: Manual mode only for now - keeping for future auto mode use */}
+                  {/* {compoundId && (
                     <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Compound ID</p>
                       <p className="text-sm font-mono font-semibold">{compoundId}</p>
                       <p className="text-xs text-muted-foreground">Auto-generated from cover compound type and produced on date</p>
                     </div>
-                  )}
+                  )} */}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="coverCompoundLotSize" className="text-sm font-medium">
-                        Cover Compound Lot Size (Optional)
+                        Cover Compound Weight (Optional)
                       </Label>
                       <Input
                         id="coverCompoundLotSize"
@@ -589,7 +676,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="skimCompoundLotSize" className="text-sm font-medium">
-                        Skim Compound Lot Size (Optional)
+                        Skim Compound Weight (Optional)
                       </Label>
                       <Input
                         id="skimCompoundLotSize"
@@ -674,58 +761,13 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
 
               {/* Step 3: Process Dates */}
               <TabsContent value="step3" className="space-y-6 mt-0">
-                {status === 'In Production' && (
-                  <div className="bg-muted/50 border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <Label className="text-sm font-semibold">Tracking Mode</Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Choose how dates are calculated for this belt
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-3">
-                        <span className={`text-sm ${trackingMode === 'auto' ? 'font-semibold' : 'text-muted-foreground'}`}>
-                          Auto
-                        </span>
-                        <Switch
-                          checked={trackingMode === 'manual'}
-                          onCheckedChange={(checked) => {
-                            setValue('trackingMode', checked ? 'manual' : 'auto');
-                          }}
-                        />
-                        <span className={`text-sm ${trackingMode === 'manual' ? 'font-semibold' : 'text-muted-foreground'}`}>
-                          Manual
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-background rounded p-3">
-                      <p className="text-xs text-muted-foreground">
-                        {trackingMode === 'auto' ? (
-                          <>🔵 <strong>Auto Mode:</strong> Enter the latest completed stage date. System will calculate backward only (no future dates).</>
-                        ) : (
-                          <>🟡 <strong>Manual Mode:</strong> Enter all dates manually. No automatic calculations will be performed.</>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 <div className="space-y-4">
                   <h3 className="text-base font-semibold">Production Timeline</h3>
-                  {status === 'In Production' && trackingMode === 'auto' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-900">
-                        💡 Enter the latest completed stage date. The system will automatically calculate backward dates only. Dates skip Sundays and holidays.
-                      </p>
-                    </div>
-                  )}
-                  {status === 'Dispatched' && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-900">
-                        💡 Enter dates for all completed stages. Dates automatically skip Sundays and holidays.
-                      </p>
-                    </div>
-                  )}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-900">
+                      💡 Enter dates for all completed stages manually.
+                    </p>
+                  </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="calendaringDate" className="text-sm font-medium">
@@ -780,7 +822,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                       placeholder="Select green belt date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {trackingMode === 'auto' ? 'Auto-calculated from calendaring' : 'Date when uncured belt was assembled'}
+                      Date when uncured belt was assembled
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -815,7 +857,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                       placeholder="Select curing date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {trackingMode === 'auto' ? 'Auto-calculated: +1 day from calendaring' : 'Date when belt was vulcanized'}
+                      Date when belt was vulcanized
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -850,7 +892,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                       placeholder="Select inspection date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {trackingMode === 'auto' ? 'Auto-calculated: +4 days from calendaring' : 'Date of internal quality check'}
+                      Date of internal quality check
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -867,7 +909,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
 
                   <div className="space-y-2">
                     <Label htmlFor="pidDate" className="text-sm font-medium">
-                      PID Date
+                      PDI Date (Pre Dispatch Inspection)
                     </Label>
                     <DatePicker
                       id="pidDate"
@@ -880,10 +922,10 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                           date ? formatDateString(date) : undefined
                         )
                       }
-                      placeholder="Select PID date"
+                      placeholder="Select PDI date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Third party quality check
+                      Pre Dispatch Inspection - Third party quality check
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -910,11 +952,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                       placeholder="Select packaging date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      {trackingMode === 'manual'
-                        ? 'Enter manually (no auto-calculation in manual mode)'
-                        : pidDate
-                          ? 'Auto-calculated: 1 day after PID date (skips Sundays and holidays)'
-                          : 'Enter manually or will be auto-calculated after PID date'}
+                      Enter packaging date manually
                     </p>
                   </div>
                   <div className="space-y-2">
@@ -963,8 +1001,8 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                     size="lg"
                     className="w-full sm:w-auto"
                   >
-            Save Belt
-          </Button>
+                    {isEditMode ? 'Update Belt' : 'Save Belt'}
+                  </Button>
                 </div>
               </TabsContent>
             </Tabs>

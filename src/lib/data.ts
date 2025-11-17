@@ -59,6 +59,7 @@ export interface FabricInfo {
   strength?: number;
   supplier?: string;
   rollNumber?: string;
+  consumedMeters?: number; // Fabric consumed in meters
 }
 
 export interface Belt {
@@ -74,6 +75,7 @@ export interface Belt {
   breakerPly?: boolean;
   breakerPlyRemarks?: string;
   carcassMm?: number;
+  coverGrade?: string;
   orderNumber?: string;
   buyerName?: string;
   orderDate?: string;
@@ -82,6 +84,7 @@ export interface Belt {
   process?: ProcessDates;
   status: 'Dispatched' | 'In Production';
   trackingMode?: TrackingMode; // 'auto' or 'manual' for In Production belts
+  entryType?: 'Manual' | 'Auto'; // Entry type: Manual or Auto
   createdAt?: string;
 }
 
@@ -165,7 +168,7 @@ export const SAMPLE_BELTS: Belt[] = [
     bottomCoverMm: 3,
     carcassMm: 0,
     fabric: { type: 'EP', rating: '630/4', strength: 160, supplier: 'Alpha Fabrics' },
-    compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10', compoundId: 'Layer3_2025-11-03' },
+    compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10' },
     process: {
       calendaringDate: '2025-11-10',
       greenBeltDate: '2025-11-10',
@@ -177,6 +180,7 @@ export const SAMPLE_BELTS: Belt[] = [
     orderDate: '2025-10-15',
     deliveryDeadline: '2025-11-30',
     status: 'In Production',
+    entryType: 'Manual',
     createdAt: '2025-11-01T08:00:00.000Z',
   },
   {
@@ -187,7 +191,7 @@ export const SAMPLE_BELTS: Belt[] = [
     bottomCoverMm: 2,
     carcassMm: 0,
     fabric: { type: 'NN', rating: '500/3', strength: 160, supplier: 'Beta Textiles' },
-    compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08', compoundId: 'FR_2025-10-01' },
+    compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08' },
     process: {
       calendaringDate: '2025-10-08',
       greenBeltDate: '2025-10-08',
@@ -202,6 +206,7 @@ export const SAMPLE_BELTS: Belt[] = [
     orderDate: '2025-09-20',
     deliveryDeadline: '2025-10-25',
     status: 'Dispatched',
+    entryType: 'Manual',
     createdAt: '2025-10-01T08:00:00.000Z',
   },
 ];

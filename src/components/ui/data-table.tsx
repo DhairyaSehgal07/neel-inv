@@ -81,9 +81,9 @@ export function DataTable<TData, TValue>({
   })
 
   return (
-    <div className="w-full space-y-4">
+    <div className="w-full space-y-4 min-w-0">
       {/* Search and Column Toggle */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 min-w-0">
         {searchKey && (
           <Input
             placeholder={searchPlaceholder}
@@ -125,7 +125,7 @@ export function DataTable<TData, TValue>({
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
