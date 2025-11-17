@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.4](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.3...v0.2.4) (2025-11-17)
+
+
+### Features
+
+* enhance reverse tracking page and belt dialog with improved functionality ([291f3fa](https://github.com/DhairyaSehgal07/neel-inv/commit/291f3fa41fa773c4aaabfc351a3ffd48d5a2cc81))
+
 ### [0.2.3](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.2...v0.2.3) (2025-11-14)
 
 
