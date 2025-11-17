@@ -25,7 +25,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { calculateBackwardDates, parseDateString, formatDateString } from '@/lib/date-utils';
+import { calculateBackwardDates, parseDateString, formatDateString, getNextWorkingDay } from '@/lib/date-utils';
 import { EdgeType, TrackingMode } from '@/lib/data';
 
 export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }) {
@@ -34,18 +34,18 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
   const [activeTab, setActiveTab] = useState('step1');
 
   const rating = watch('rating');
-  const calendaringDate = watch('process.calendaringDate');
   const status = watch('status');
   const trackingMode = watch('trackingMode') as TrackingMode | undefined;
   const breakerPly = watch('breakerPly');
+  const calendaringDate = watch('process.calendaringDate');
   const greenBeltDate = watch('process.greenBeltDate');
   const curingDate = watch('process.curingDate');
   const inspectionDate = watch('process.inspectionDate');
-  const compoundProducedOn = watch('compound.producedOn');
-  const compoundUsedOn = watch('compound.usedOn');
-  const compoundType = watch('compound.type');
+  const pidDate = watch('process.pidDate');
+  const coverCompoundType = watch('compound.coverCompoundType');
+  const coverCompoundProducedOn = watch('compound.coverCompoundProducedOn');
 
-  // Generate compoundId when both type and producedOn date are available
+  // Generate compoundId when both cover compound type and produced on date are available
   const generateCompoundId = (type?: CompoundType, date?: string): string | undefined => {
     if (type && date) {
       // Format: M-24_2025-11-03
@@ -54,7 +54,25 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
     return undefined;
   };
 
-  const compoundId = generateCompoundId(compoundType, compoundProducedOn);
+  const compoundId = generateCompoundId(coverCompoundType, coverCompoundProducedOn);
+
+  // Auto-set compound.usedOn to calendaring date when calendaring date is set
+  useEffect(() => {
+    if (calendaringDate) {
+      setValue('compound.usedOn', calendaringDate);
+    }
+  }, [calendaringDate, setValue]);
+
+  // Auto-calculate packaging date as one day after PID date (skipping Sundays and holidays)
+  // Only calculate if NOT in manual mode
+  useEffect(() => {
+    if (pidDate && trackingMode !== 'manual') {
+      const pidDateObj = parseDateString(pidDate);
+      const nextWorkingDay = getNextWorkingDay(pidDateObj);
+      const packagingDateStr = formatDateString(nextWorkingDay);
+      setValue('process.packagingDate', packagingDateStr);
+    }
+  }, [pidDate, trackingMode, setValue]);
 
   // Auto-fill fabric strength when rating is selected
   useEffect(() => {
@@ -101,12 +119,6 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
       if (calculated.greenBeltDate && !greenBeltDate) {
         setValue('process.greenBeltDate', calculated.greenBeltDate);
       }
-      if (calculated.compoundProducedOn && !compoundProducedOn) {
-        setValue('compound.producedOn', calculated.compoundProducedOn);
-      }
-      if (calculated.compoundUsedOn && !compoundUsedOn) {
-        setValue('compound.usedOn', calculated.compoundUsedOn);
-      }
       if (calculated.curingDate && !curingDate && latestStage !== 'curingDate') {
         setValue('process.curingDate', calculated.curingDate);
       }
@@ -114,11 +126,17 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
         setValue('process.inspectionDate', calculated.inspectionDate);
       }
     }
-  }, [status, trackingMode, calendaringDate, greenBeltDate, curingDate, inspectionDate, compoundProducedOn, compoundUsedOn, setValue]);
+  }, [status, trackingMode, calendaringDate, greenBeltDate, curingDate, inspectionDate, setValue]);
 
   const onSubmit = (data: Belt) => {
-    // Generate compoundId if not already set
-    const finalCompoundId = data.compound?.compoundId || generateCompoundId(data.compound?.type, data.compound?.producedOn);
+    // Generate compoundId if not already set (use cover compound type and produced on date)
+    const finalCompoundId = data.compound?.compoundId || generateCompoundId(
+      data.compound?.coverCompoundType,
+      data.compound?.coverCompoundProducedOn
+    );
+
+    // Ensure compound.usedOn is set to calendaring date
+    const compoundUsedOn = data.process?.calendaringDate || data.compound?.usedOn;
 
     const newBelt: Belt = {
       ...data,
@@ -128,6 +146,7 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
       compound: data.compound ? {
         ...data.compound,
         compoundId: finalCompoundId,
+        usedOn: compoundUsedOn, // Auto-set to calendaring date
       } : undefined,
     };
     onAdd(newBelt);
@@ -274,6 +293,35 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                         {...register('bottomCoverMm', { valueAsNumber: true, required: true })}
                         className="h-10"
                         placeholder="e.g. 3.0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="beltLength" className="text-sm font-medium">
+                        Belt Length (m)
+                      </Label>
+                      <Input
+                        id="beltLength"
+                        type="number"
+                        step="0.1"
+                        {...register('beltLengthM', { valueAsNumber: true })}
+                        className="h-10"
+                        placeholder="e.g. 100.0"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="beltWidth" className="text-sm font-medium">
+                        Belt Width (mm)
+                      </Label>
+                      <Input
+                        id="beltWidth"
+                        type="number"
+                        step="0.1"
+                        {...register('beltWidthMm', { valueAsNumber: true })}
+                        className="h-10"
+                        placeholder="e.g. 1200.0"
                       />
                     </div>
                   </div>
@@ -477,92 +525,131 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                 <div className="border-t pt-6 space-y-4">
                   <h3 className="text-base font-semibold">Compound Information</h3>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="compoundType" className="text-sm font-medium">
-                      Compound Type
-                    </Label>
-                    <Select onValueChange={(val) => setValue('compound.type', val as CompoundType)}>
-                      <SelectTrigger id="compoundType" className="h-10">
-                        <SelectValue placeholder="Select compound type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMPOUNDS.map((compound) => (
-                          <SelectItem key={compound} value={compound}>
-                            {compound}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="coverCompoundType" className="text-sm font-medium">
+                        Cover Compound Type
+                      </Label>
+                      <Select onValueChange={(val) => setValue('compound.coverCompoundType', val as CompoundType)}>
+                        <SelectTrigger id="coverCompoundType" className="h-10">
+                          <SelectValue placeholder="Select cover compound type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPOUNDS.map((compound) => (
+                            <SelectItem key={compound} value={compound}>
+                              {compound}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="skimCompoundType" className="text-sm font-medium">
+                        Skim Compound Type
+                      </Label>
+                      <Select onValueChange={(val) => setValue('compound.skimCompoundType', val as CompoundType)}>
+                        <SelectTrigger id="skimCompoundType" className="h-10">
+                          <SelectValue placeholder="Select skim compound type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {COMPOUNDS.map((compound) => (
+                            <SelectItem key={compound} value={compound}>
+                              {compound}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   {compoundId && (
                     <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
                       <p className="text-xs font-medium text-muted-foreground">Compound ID</p>
                       <p className="text-sm font-mono font-semibold">{compoundId}</p>
-                      <p className="text-xs text-muted-foreground">Auto-generated from compound type and production date</p>
+                      <p className="text-xs text-muted-foreground">Auto-generated from cover compound type and produced on date</p>
                     </div>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="compoundLotSize" className="text-sm font-medium">
-                      Compound Lot Size / Batch Weight (Optional)
-                    </Label>
-                    <Input
-                      id="compoundLotSize"
-                      type="number"
-                      step="0.1"
-                      {...register('compound.lotSize', { valueAsNumber: true })}
-                      className="h-10"
-                      placeholder="Enter batch weight"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1.5">
-                      Enter the batch weight for this compound lot
-                    </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="coverCompoundLotSize" className="text-sm font-medium">
+                        Cover Compound Lot Size (Optional)
+                      </Label>
+                      <Input
+                        id="coverCompoundLotSize"
+                        type="number"
+                        step="0.1"
+                        {...register('compound.coverCompoundLotSize', { valueAsNumber: true })}
+                        className="h-10"
+                        placeholder="Enter batch weight"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Enter the batch weight for cover compound
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="skimCompoundLotSize" className="text-sm font-medium">
+                        Skim Compound Lot Size (Optional)
+                      </Label>
+                      <Input
+                        id="skimCompoundLotSize"
+                        type="number"
+                        step="0.1"
+                        {...register('compound.skimCompoundLotSize', { valueAsNumber: true })}
+                        className="h-10"
+                        placeholder="Enter batch weight"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Enter the batch weight for skim compound
+                      </p>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="compoundProducedOn" className="text-sm font-medium">
-                        Compound Produced On
+                      <Label htmlFor="coverCompoundProducedOn" className="text-sm font-medium">
+                        Cover Compound Produced On
                       </Label>
                       <DatePicker
-                        id="compoundProducedOn"
+                        id="coverCompoundProducedOn"
                         date={
-                          watch('compound.producedOn')
-                            ? parseDateString(watch('compound.producedOn')!)
+                          watch('compound.coverCompoundProducedOn')
+                            ? parseDateString(watch('compound.coverCompoundProducedOn')!)
                             : undefined
                         }
                         onDateChange={(date) =>
                           setValue(
-                            'compound.producedOn',
+                            'compound.coverCompoundProducedOn',
                             date ? formatDateString(date) : undefined
                           )
                         }
-                        placeholder="Select production date"
+                        placeholder="Select cover compound produced date"
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Typically 7 days before calendaring
+                        Date when cover compound was produced
                       </p>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="compoundUsedOn" className="text-sm font-medium">
-                        Compound Used On
+                      <Label htmlFor="skimCompoundProducedOn" className="text-sm font-medium">
+                        Skim Compound Produced On
                       </Label>
                       <DatePicker
-                        id="compoundUsedOn"
+                        id="skimCompoundProducedOn"
                         date={
-                          watch('compound.usedOn') ? parseDateString(watch('compound.usedOn')!) : undefined
+                          watch('compound.skimCompoundProducedOn')
+                            ? parseDateString(watch('compound.skimCompoundProducedOn')!)
+                            : undefined
                         }
                         onDateChange={(date) =>
                           setValue(
-                            'compound.usedOn',
+                            'compound.skimCompoundProducedOn',
                             date ? formatDateString(date) : undefined
                           )
                         }
-                        placeholder="Select usage date"
+                        placeholder="Select skim compound produced date"
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Same as calendaring date
+                        Date when skim compound was produced
                       </p>
                     </div>
                   </div>
@@ -768,12 +855,12 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="inspectionMachine" className="text-sm font-medium">
-                      Inspection Press#
+                      Inspection Station
                     </Label>
                     <Input
                       id="inspectionMachine"
                       {...register('process.inspectionMachine')}
-                      placeholder="Enter inspection press number"
+                      placeholder="Enter inspection station"
                       className="h-10"
                     />
                   </div>
@@ -822,6 +909,13 @@ export default function NewBeltDialog({ onAdd }: { onAdd: (belt: Belt) => void }
                       }
                       placeholder="Select packaging date"
                     />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      {trackingMode === 'manual'
+                        ? 'Enter manually (no auto-calculation in manual mode)'
+                        : pidDate
+                          ? 'Auto-calculated: 1 day after PID date (skips Sundays and holidays)'
+                          : 'Enter manually or will be auto-calculated after PID date'}
+                    </p>
                   </div>
                   <div className="space-y-2">
                     {/* Empty space for alignment */}

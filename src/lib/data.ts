@@ -30,18 +30,26 @@ export interface ProcessDates {
   curingDate?: string;
   curingMachine?: string; // Press #
   inspectionDate?: string;
-  inspectionMachine?: string; // Inspection Press#
+  inspectionMachine?: string; // Inspection Station
   pidDate?: string;
   packagingDate?: string;
   dispatchDate?: string;
 }
 
 export interface CompoundInfo {
-  type?: CompoundType;
-  producedOn?: string;
-  usedOn?: string;
-  lotSize?: number; // Batch weight
-  batchWeight?: number; // Alternative name for lot size
+  type?: CompoundType; // Legacy - kept for backward compatibility
+  coverCompoundType?: CompoundType;
+  skimCompoundType?: CompoundType;
+  producedOn?: string; // Legacy - kept for backward compatibility
+  coverCompoundProducedOn?: string; // Date when cover compound was produced
+  skimCompoundProducedOn?: string; // Date when skim compound was produced
+  coverCompoundUsedOn?: string; // Legacy - kept for backward compatibility
+  skimCompoundUsedOn?: string; // Legacy - kept for backward compatibility
+  usedOn?: string; // Auto-set to calendaring date (not shown in form)
+  lotSize?: number; // Legacy - kept for backward compatibility
+  batchWeight?: number; // Legacy - kept for backward compatibility
+  coverCompoundLotSize?: number; // Cover compound batch weight
+  skimCompoundLotSize?: number; // Skim compound batch weight
   compoundId?: string; // Generated ID: compoundType_date (e.g., "M-24_2025-11-03")
 }
 
@@ -60,6 +68,8 @@ export interface Belt {
   fabric?: FabricInfo;
   topCoverMm?: number;
   bottomCoverMm?: number;
+  beltLengthM?: number; // Belt length in meters
+  beltWidthMm?: number; // Belt width in millimeters
   edge?: EdgeType;
   breakerPly?: boolean;
   breakerPlyRemarks?: string;
