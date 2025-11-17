@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.5](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.4...v0.2.5) (2025-11-17)
+
+
+### Features
+
+* add localStorage persistence and edit functionality to reverse tracking ([273e19d](https://github.com/DhairyaSehgal07/neel-inv/commit/273e19d66e9076a1984d3cff96c07f0bf0634cd9))
+
 ### [0.2.4](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.3...v0.2.4) (2025-11-17)
 
 
