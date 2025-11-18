@@ -139,8 +139,10 @@ export async function POST(request: NextRequest) {
 
     // Handle duplicate key errors (MongoDB duplicate key error)
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
-      const keyPattern = 'keyPattern' in error && typeof error.keyPattern === 'object' ? error.keyPattern : {};
-      const field = Object.keys(keyPattern)[0] || 'field';
+      const keyPattern = 'keyPattern' in error && typeof error.keyPattern === 'object' && error.keyPattern !== null
+        ? error.keyPattern
+        : {};
+      const field = Object.keys(keyPattern as Record<string, unknown>)[0] || 'field';
       return NextResponse.json(
         {
           success: false,

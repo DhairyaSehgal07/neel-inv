@@ -232,9 +232,8 @@ const BeltSchema: Schema<BeltDocument> = new Schema(
   { timestamps: true } // adds createdAt and updatedAt automatically
 );
 
-// Create indexes for unique belt codes
-BeltSchema.index({ "compound.coverBeltCode": 1 }, { unique: true, sparse: true });
-BeltSchema.index({ "compound.skimBeltCode": 1 }, { unique: true, sparse: true });
+// Note: Unique indexes for coverBeltCode and skimBeltCode are defined in the CompoundInfoSchema
+// using unique: true and sparse: true in the field definitions
 
 const BeltModel =
   (mongoose.models.Belt as mongoose.Model<BeltDocument>) ||
