@@ -1,62 +1,39 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef, useLayoutEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Belt, SAMPLE_BELTS } from '@/lib/data';
+import { Belt } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { Badge } from '@/components/ui/badge';
 import NewBeltDialog from '@/components/new-belt-dialog';
+import NewBeltDialogAuto from '@/components/auto-new-belt-dialog';
 import { formatDate } from '@/lib/date-utils';
 import { Eye, Pencil } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-const STORAGE_KEY = 'reverse-tracking-belts';
+interface ReverseTrackingPageProps {
+  initialBelts?: Belt[];
+}
 
-export default function ReverseTrackingPage() {
-  // Initialize with SAMPLE_BELTS to avoid hydration mismatch
-  const [belts, setBelts] = useState<Belt[]>(SAMPLE_BELTS);
+export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTrackingPageProps) {
+  const [belts, setBelts] = useState<Belt[]>(initialBelts);
   const [selectedBelt, setSelectedBelt] = useState<Belt | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editingBelt, setEditingBelt] = useState<Belt | null>(null);
-  const isInitialLoad = useRef(true);
-
-  // Load from localStorage after hydration (client-side only)
-  // Using useLayoutEffect to load before paint to minimize visual flash
-  // Note: setState in effect is necessary here to avoid hydration mismatch.
-  // We initialize with SAMPLE_BELTS (same on server/client), then update from localStorage after mount.
-  // This is a standard pattern for localStorage in Next.js to prevent hydration errors.
-  useLayoutEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsedBelts = JSON.parse(stored);
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setBelts(parsedBelts);
-        } catch (error) {
-          console.error('Error parsing stored belts:', error);
-        }
-      }
-      isInitialLoad.current = false;
-    }
-  }, []);
-
-  // Save belts to localStorage whenever they change (client-side only, skip initial load)
-  useEffect(() => {
-    if (typeof window !== 'undefined' && !isInitialLoad.current) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(belts));
-    }
-  }, [belts]);
 
   const handleAddBelt = (belt: Belt) => {
     setBelts([belt, ...belts]);
+    // TODO: Add API call to save belt to database
+    // await fetch('/api/belts', { method: 'POST', body: JSON.stringify(belt) });
   };
 
   const handleUpdateBelt = (updatedBelt: Belt) => {
     setBelts(belts.map((b) => (b.id === updatedBelt.id ? updatedBelt : b)));
     setEditingBelt(null);
+    // TODO: Add API call to update belt in database
+    // await fetch(`/api/belts/${updatedBelt.id}`, { method: 'PUT', body: JSON.stringify(updatedBelt) });
   };
 
   const handleViewBelt = (belt: Belt) => {
@@ -73,16 +50,14 @@ export default function ReverseTrackingPage() {
       {
         accessorKey: 'beltNumber',
         header: 'Belt #',
-        cell: ({ row }) => (
-          <div className="font-medium min-w-[100px]">{row.getValue('beltNumber')}</div>
-        ),
+        cell: ({ row }) => <div className="font-medium truncate">{row.getValue('beltNumber')}</div>,
       },
       {
         accessorKey: 'rating',
         header: 'Rating',
         cell: ({ row }) => {
           const rating = row.getValue('rating') as string;
-          return <div className="min-w-[80px]">{rating || '-'}</div>;
+          return <div className="truncate">{rating || '-'}</div>;
         },
       },
       {
@@ -90,7 +65,7 @@ export default function ReverseTrackingPage() {
         header: 'Fabric',
         cell: ({ row }) => {
           const fabric = row.original.fabric;
-          return <div className="min-w-[60px]">{fabric?.type || '-'}</div>;
+          return <div className="truncate">{fabric?.type || '-'}</div>;
         },
       },
       {
@@ -98,23 +73,23 @@ export default function ReverseTrackingPage() {
         header: 'Length (m)',
         cell: ({ row }) => {
           const length = row.original.beltLengthM;
-          return <div className="min-w-[80px]">{length ? `${length}` : '-'}</div>;
+          return <div className="truncate">{length ? `${length}` : '-'}</div>;
         },
       },
       {
         accessorKey: 'beltWidthMm',
-        header: 'Width (mm)',
+        header: 'Width (m)',
         cell: ({ row }) => {
           const width = row.original.beltWidthMm;
-          return <div className="min-w-[90px]">{width ? `${width}` : '-'}</div>;
+          return <div className="truncate">{width ? `${(width / 1000).toFixed(3)}` : '-'}</div>;
         },
       },
       {
         accessorKey: 'coverGrade',
         header: 'Cover Grade',
         cell: ({ row }) => {
-          const width = row.original.coverGrade;
-          return <div className="min-w-[90px]">{width ? `${width}` : '-'}</div>;
+          const coverGrade = row.original.coverGrade;
+          return <div className="truncate">{coverGrade || '-'}</div>;
         },
       },
       {
@@ -122,7 +97,7 @@ export default function ReverseTrackingPage() {
         header: 'Top Cover',
         cell: ({ row }) => {
           const topCover = row.original.topCoverMm;
-          return <div className="min-w-[90px]">{topCover ? `${topCover} mm` : '-'}</div>;
+          return <div className="truncate">{topCover ? `${topCover} mm` : '-'}</div>;
         },
       },
       {
@@ -130,7 +105,7 @@ export default function ReverseTrackingPage() {
         header: 'Bottom Cover',
         cell: ({ row }) => {
           const bottomCover = row.original.bottomCoverMm;
-          return <div className="min-w-[110px]">{bottomCover ? `${bottomCover} mm` : '-'}</div>;
+          return <div className="truncate">{bottomCover ? `${bottomCover} mm` : '-'}</div>;
         },
       },
       {
@@ -138,16 +113,15 @@ export default function ReverseTrackingPage() {
         header: 'Edge',
         cell: ({ row }) => {
           const edge = row.original.edge;
-          return <div className="min-w-[70px]">{edge || '-'}</div>;
+          return <div className="truncate">{edge || '-'}</div>;
         },
       },
-
       {
         accessorKey: 'buyerName',
         header: 'Buyer',
         cell: ({ row }) => {
           const buyer = row.getValue('buyerName') as string;
-          return <div className="min-w-[120px]">{buyer || '-'}</div>;
+          return <div className="truncate">{buyer || '-'}</div>;
         },
       },
       {
@@ -155,33 +129,28 @@ export default function ReverseTrackingPage() {
         header: 'Order #',
         cell: ({ row }) => {
           const order = row.getValue('orderNumber') as string;
-          return <div className="min-w-[100px]">{order || '-'}</div>;
+          return <div className="truncate">{order || '-'}</div>;
         },
       },
-
       {
         accessorKey: 'breakerPly',
         header: 'Breaker Ply',
         cell: ({ row }) => {
           const breakerPly = row.original.breakerPly;
           return (
-            <div className="min-w-[90px]">
+            <div className="truncate">
               {breakerPly === undefined ? '-' : breakerPly ? 'Yes' : 'No'}
             </div>
           );
         },
       },
-
       {
         accessorKey: 'status',
         header: 'Status',
         cell: ({ row }) => {
           const status = row.getValue('status') as string;
           return (
-            <Badge
-              variant={status === 'Dispatched' ? 'default' : 'secondary'}
-              className="min-w-[100px]"
-            >
+            <Badge variant={status === 'Dispatched' ? 'default' : 'secondary'} className="truncate">
               {status}
             </Badge>
           );
@@ -193,22 +162,12 @@ export default function ReverseTrackingPage() {
         cell: ({ row }) => {
           const belt = row.original;
           return (
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleViewBelt(belt)}
-                className="min-w-[80px]"
-              >
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="ghost" size="sm" onClick={() => handleViewBelt(belt)}>
                 <Eye className="h-4 w-4 mr-1" />
                 View
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleEditBelt(belt)}
-                className="min-w-[80px]"
-              >
+              <Button variant="ghost" size="sm" onClick={() => handleEditBelt(belt)}>
                 <Pencil className="h-4 w-4 mr-1" />
                 Edit
               </Button>
@@ -221,8 +180,8 @@ export default function ReverseTrackingPage() {
   );
 
   return (
-    <div className="w-full overflow-x-hidden">
-      <div className="p-6 space-y-6">
+    <div className="w-full flex flex-col">
+      <div className="px-6 pt-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
             <h1 className="text-3xl font-bold">Reverse Tracking System</h1>
@@ -230,11 +189,14 @@ export default function ReverseTrackingPage() {
               Trace belts back through raw materials, compounding, and processing stages
             </p>
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 flex gap-2">
             <NewBeltDialog onAdd={handleAddBelt} />
+            <NewBeltDialogAuto onAdd={handleAddBelt} />
           </div>
         </div>
+      </div>
 
+      <div className="px-6 pb-6 flex-1 overflow-hidden flex flex-col">
         <DataTable
           columns={columns}
           data={belts}
@@ -318,7 +280,7 @@ function BeltDetailView({ belt }: { belt: Belt }) {
           {belt.beltWidthMm && (
             <div>
               <p className="text-sm text-muted-foreground">Belt Width</p>
-              <p className="font-medium">{belt.beltWidthMm} mm</p>
+              <p className="font-medium">{(belt.beltWidthMm / 1000).toFixed(3)} m</p>
             </div>
           )}
           {belt.carcassMm && (
@@ -398,13 +360,6 @@ function BeltDetailView({ belt }: { belt: Belt }) {
             <CardTitle>Compound Information</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
-            {/* Only show compoundId for Auto entries */}
-            {belt.entryType === 'Auto' && belt.compound.compoundId && (
-              <div className="col-span-2">
-                <p className="text-sm text-muted-foreground">Compound ID</p>
-                <p className="font-mono font-semibold text-base">{belt.compound.compoundId}</p>
-              </div>
-            )}
             {belt.compound.coverCompoundType && (
               <div>
                 <p className="text-sm text-muted-foreground">Cover Compound Type</p>
@@ -417,15 +372,6 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                 <p className="font-medium">{belt.compound.skimCompoundType}</p>
               </div>
             )}
-            {/* Legacy support - show old type if new fields not available */}
-            {!belt.compound.coverCompoundType &&
-              !belt.compound.skimCompoundType &&
-              belt.compound.type && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Type</p>
-                  <p className="font-medium">{belt.compound.type}</p>
-                </div>
-              )}
             {belt.compound.coverCompoundProducedOn && (
               <div>
                 <p className="text-sm text-muted-foreground">Cover Compound Produced On</p>
@@ -438,56 +384,18 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                 <p className="font-medium">{formatDate(belt.compound.skimCompoundProducedOn)}</p>
               </div>
             )}
-            {/* Legacy support - show old dates if new fields not available */}
-            {!belt.compound.coverCompoundProducedOn && !belt.compound.skimCompoundProducedOn && (
-              <>
-                {belt.compound.coverCompoundUsedOn && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Cover Compound Used On</p>
-                    <p className="font-medium">{formatDate(belt.compound.coverCompoundUsedOn)}</p>
-                  </div>
-                )}
-                {belt.compound.skimCompoundUsedOn && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Skim Compound Used On</p>
-                    <p className="font-medium">{formatDate(belt.compound.skimCompoundUsedOn)}</p>
-                  </div>
-                )}
-                {belt.compound.producedOn && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Produced On</p>
-                    <p className="font-medium">{formatDate(belt.compound.producedOn)}</p>
-                  </div>
-                )}
-                {belt.compound.usedOn && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">Used On</p>
-                    <p className="font-medium">{formatDate(belt.compound.usedOn)}</p>
-                  </div>
-                )}
-              </>
-            )}
-            {belt.compound.coverCompoundLotSize && (
+            {belt.compound.coverCompoundConsumed && (
               <div>
-                <p className="text-sm text-muted-foreground">Cover Compound consumed</p>
-                <p className="font-medium">{belt.compound.coverCompoundLotSize}</p>
+                <p className="text-sm text-muted-foreground">Cover Compound Consumed</p>
+                <p className="font-medium">{belt.compound.coverCompoundConsumed}</p>
               </div>
             )}
-            {belt.compound.skimCompoundLotSize && (
+            {belt.compound.skimCompoundConsumed && (
               <div>
-                <p className="text-sm text-muted-foreground">Skim Compound consumed</p>
-                <p className="font-medium">{belt.compound.skimCompoundLotSize}</p>
+                <p className="text-sm text-muted-foreground">Skim Compound Consumed</p>
+                <p className="font-medium">{belt.compound.skimCompoundConsumed}</p>
               </div>
             )}
-            {/* Legacy support - show old lot size if new fields not available */}
-            {!belt.compound.coverCompoundLotSize &&
-              !belt.compound.skimCompoundLotSize &&
-              belt.compound.lotSize && (
-                <div>
-                  <p className="text-sm text-muted-foreground">Lot Size / Batch Weight</p>
-                  <p className="font-medium">{belt.compound.lotSize}</p>
-                </div>
-              )}
           </CardContent>
         </Card>
       )}
@@ -505,7 +413,9 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                   <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Calendaring Date</span>
                     {belt.process.calendaringMachine && (
-                      <span className="text-xs text-muted-foreground mt-0.5">Cal #: {belt.process.calendaringMachine}</span>
+                      <span className="text-xs text-muted-foreground mt-0.5">
+                        Cal #: {belt.process.calendaringMachine}
+                      </span>
                     )}
                   </div>
                   <span className="font-medium">{formatDate(belt.process.calendaringDate)}</span>
@@ -516,7 +426,9 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                   <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Green Belt Date</span>
                     {belt.process.greenBeltMachine && (
-                      <span className="text-xs text-muted-foreground mt-0.5">Table #: {belt.process.greenBeltMachine}</span>
+                      <span className="text-xs text-muted-foreground mt-0.5">
+                        Table #: {belt.process.greenBeltMachine}
+                      </span>
                     )}
                   </div>
                   <span className="font-medium">{formatDate(belt.process.greenBeltDate)}</span>
@@ -527,7 +439,9 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                   <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Curing (Press) Date</span>
                     {belt.process.curingMachine && (
-                      <span className="text-xs text-muted-foreground mt-0.5">Press #: {belt.process.curingMachine}</span>
+                      <span className="text-xs text-muted-foreground mt-0.5">
+                        Press #: {belt.process.curingMachine}
+                      </span>
                     )}
                   </div>
                   <span className="font-medium">{formatDate(belt.process.curingDate)}</span>
@@ -538,7 +452,9 @@ function BeltDetailView({ belt }: { belt: Belt }) {
                   <div className="flex flex-col">
                     <span className="text-sm text-muted-foreground">Internal Inspection Date</span>
                     {belt.process.inspectionMachine && (
-                      <span className="text-xs text-muted-foreground mt-0.5">Inspection Station: {belt.process.inspectionMachine}</span>
+                      <span className="text-xs text-muted-foreground mt-0.5">
+                        Inspection Station: {belt.process.inspectionMachine}
+                      </span>
                     )}
                   </div>
                   <span className="font-medium">{formatDate(belt.process.inspectionDate)}</span>
@@ -546,7 +462,9 @@ function BeltDetailView({ belt }: { belt: Belt }) {
               )}
               {belt.process.pidDate && (
                 <div className="flex justify-between items-center border-b pb-2">
-                  <span className="text-sm text-muted-foreground">PDI Date (Pre Dispatch Inspection)</span>
+                  <span className="text-sm text-muted-foreground">
+                    PDI Date (Pre Dispatch Inspection)
+                  </span>
                   <span className="font-medium">{formatDate(belt.process.pidDate)}</span>
                 </div>
               )}

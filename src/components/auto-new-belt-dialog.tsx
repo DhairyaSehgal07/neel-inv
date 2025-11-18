@@ -1,7 +1,8 @@
 'use client';
 
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Belt, FABRIC_LOOKUP, FabricType, COMPOUNDS, CompoundType } from '@/lib/data';
+import { Belt, FABRIC_LOOKUP, FabricType, COMPOUNDS, CompoundType, EdgeType } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -24,11 +25,18 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, ChevronRight, ChevronLeft } from 'lucide-react';
-import { useState, useEffect } from 'react';
 import { parseDateString, formatDateString } from '@/lib/date-utils';
-import { EdgeType } from '@/lib/data';
 
-interface NewBeltDialogProps {
+import {
+  parseNumberOfPliesFromRating,
+  fabric_consumed,
+  cover_weight_kg,
+  skim_weight_kg,
+  skim_thickness_from_strength,
+  process_dates_from_dispatch,
+} from '@/lib/calculations';
+
+interface NewBeltDialogAutoProps {
   onAdd?: (belt: Belt) => void;
   onUpdate?: (belt: Belt) => void;
   belt?: Belt;
@@ -37,43 +45,72 @@ interface NewBeltDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export default function NewBeltDialog({
+/**
+ * NewBeltDialogAuto
+ * - Same fields and casing as original component
+ * - Automatic calculations:
+ *   - fabric.consumedMeters
+ *   - compound.coverCompoundConsumed
+ *   - compound.skimCompoundConsumed
+ *   - compound.coverBatches
+ *   - compound.skimBatches
+ *   - compound.randomValue
+ *   - process.* dates inferred from dispatch_date when provided
+ */
+export default function NewBeltDialogAuto({
   onAdd,
   onUpdate,
   belt,
   trigger,
   open: controlledOpen,
   onOpenChange,
-}: NewBeltDialogProps) {
+}: NewBeltDialogAutoProps) {
   const isEditMode = !!belt;
   const { register, handleSubmit, setValue, watch, reset } = useForm<Belt>({
     defaultValues: belt || {},
   });
+
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
   const setOpen = onOpenChange || setInternalOpen;
   const [activeTab, setActiveTab] = useState('step1');
 
-  // Populate form when editing
+  // State for displaying calculation intermediate values
+  const [calcValues, setCalcValues] = useState({
+    numberOfPlies: 0,
+    beltWidthM: undefined as number | undefined,
+    coverThicknessMm: 0,
+    coverSG: 0,
+    skimThicknessMm: 0,
+    skimSG: 0,
+  });
+
+  // watches
+  const rating = watch('rating');
+  const beltLengthM = watch('beltLengthM');
+  const beltWidthMm = watch('beltWidthMm');
+  const beltWidthM = beltWidthMm ? beltWidthMm / 1000 : undefined;
+  const topCoverMm = watch('topCoverMm');
+  const bottomCoverMm = watch('bottomCoverMm');
+  const compoundCoverType = watch('compound.coverCompoundType') as CompoundType | undefined;
+  const compoundSkimType = watch('compound.skimCompoundType') as CompoundType | undefined;
+  const entryDispatchDate = watch('process.dispatchDate');
+  const calendaringDate = watch('process.calendaringDate');
+  const breakerPly = watch('breakerPly');
+
+  // populate form when editing or opening
   useEffect(() => {
     if (belt && open) {
-      // Reset form with belt data
       reset(belt);
       setActiveTab('step1');
     } else if (!belt && open) {
-      // Reset form for new belt
       reset();
       setActiveTab('step1');
     }
-  }, [belt, open, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [belt, open]);
 
-  const rating = watch('rating');
-  const breakerPly = watch('breakerPly');
-  const calendaringDate = watch('process.calendaringDate');
-  const beltWidthMm = watch('beltWidthMm');
-  const beltWidthM = beltWidthMm ? beltWidthMm / 1000 : undefined;
-
-  // Auto-fill fabric strength when rating is selected
+  // set fabric rating autofill (same as original)
   useEffect(() => {
     if (rating) {
       const fabricData = FABRIC_LOOKUP.find((f) => f.rating === rating);
@@ -84,29 +121,133 @@ export default function NewBeltDialog({
     }
   }, [rating, setValue]);
 
+  // Derived values effect — compute and set automatic fields whenever inputs change
+  useEffect(() => {
+    // number_of_plies from rating
+    const number_of_plies = parseNumberOfPliesFromRating(rating);
+
+    // beltWidth in meters (convert from mm stored value)
+    const beltWidthM = beltWidthMm ? beltWidthMm / 1000 : undefined;
+
+    // Cover thickness = top + bottom (mm)
+    const coverThickness = (topCoverMm || 0) + (bottomCoverMm || 0);
+
+    // Update display values for calculations
+    setCalcValues((prev) => ({
+      ...prev,
+      numberOfPlies: number_of_plies || 0,
+      beltWidthM: beltWidthM,
+      coverThicknessMm: coverThickness,
+    }));
+
+    // 1) fabric.consumedMeters
+    const fabricConsumed = fabric_consumed(beltLengthM, number_of_plies);
+    setValue(
+      'fabric.consumedMeters',
+      Number.isFinite(fabricConsumed) ? +fabricConsumed.toFixed(3) : undefined
+    );
+
+    // 2) specific gravities - use 1.5 as per document (Step 3: Compound Tracking)
+    const coverSG = 1.5;
+    const skimSG = 1.5;
+
+    // Get fabric strength from rating for skim thickness calculation
+    const fabricStrength = rating
+      ? FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength
+      : undefined;
+
+    // 3) cover_weight_kg
+    const coverKg = cover_weight_kg(topCoverMm, bottomCoverMm, coverSG, beltWidthM, beltLengthM);
+    setValue(
+      'compound.coverCompoundConsumed',
+      Number.isFinite(coverKg) ? +coverKg.toFixed(3) : undefined
+    );
+
+    // 4) skim_weight_kg - use fabric strength to get skim thickness per ply
+    const skimThicknessPerPly = skim_thickness_from_strength(fabricStrength);
+    const totalSkimThickness = skimThicknessPerPly * number_of_plies;
+    const skimKg = skim_weight_kg(
+      skimThicknessPerPly,
+      number_of_plies,
+      skimSG,
+      beltWidthM,
+      beltLengthM
+    );
+    setValue(
+      'compound.skimCompoundConsumed',
+      Number.isFinite(skimKg) ? +skimKg.toFixed(3) : undefined
+    );
+
+    // Update skim calculation values for display
+    setCalcValues((prev) => ({
+      ...prev,
+      coverSG: coverSG,
+      skimSG: skimSG,
+      skimThicknessMm: totalSkimThickness,
+    }));
+
+    // 5) batches (not part of Belt type, skipping)
+    // const coverB = cover_batches(coverKg);
+    // const skimB = skim_batches(skimKg, compoundSkimType);
+
+    // 6) random value (not part of Belt type, skipping)
+    // 7) machine breakdown next failure (not part of Belt type, skipping)
+
+    // 8) process dates from dispatch_date (reverse timeline)
+    if (entryDispatchDate) {
+      const pd = process_dates_from_dispatch(entryDispatchDate);
+      // set each process.* field only if defined
+      if (pd.packaging_date) setValue('process.packagingDate', pd.packaging_date);
+      if (pd.pdi_date) setValue('process.pidDate', pd.pdi_date); // PDI
+      if (pd.internal_inspection_date)
+        setValue('process.inspectionDate', pd.internal_inspection_date);
+      if (pd.curing_date) setValue('process.curingDate', pd.curing_date);
+      if (pd.green_belt_date) setValue('process.greenBeltDate', pd.green_belt_date);
+      if (pd.calendaring_date) setValue('process.calendaringDate', pd.calendaring_date);
+
+      // 9) compound produced-on dates: use the compound date from process dates (D - 26 to D - 13)
+      if (pd.compound_date) {
+        setValue('compound.coverCompoundProducedOn', pd.compound_date);
+        setValue('compound.skimCompoundProducedOn', pd.compound_date);
+      }
+    }
+  }, [
+    rating,
+    beltLengthM,
+    beltWidthMm,
+    topCoverMm,
+    bottomCoverMm,
+    compoundCoverType,
+    compoundSkimType,
+    entryDispatchDate,
+    calendaringDate,
+    setValue,
+  ]);
+
   const onSubmit = (data: Belt) => {
-    const entryType: 'Manual' | 'Auto' = 'Manual';
+    const entryType: 'Manual' | 'Auto' = 'Auto';
 
     if (isEditMode && belt) {
-      // Update existing belt
       const updatedBelt: Belt = {
         ...belt,
         ...data,
         id: belt.id,
         createdAt: belt.createdAt,
         status: data.status || belt.status,
-        entryType: entryType,
+        entryType,
         compound: data.compound ? { ...data.compound } : belt.compound,
       };
       onUpdate?.(updatedBelt);
     } else {
-      // Create new belt
       const newBelt: Belt = {
         ...data,
-        id: crypto.randomUUID(),
+        id:
+          typeof crypto !== 'undefined' && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `belt-${Date.now()}`,
         createdAt: new Date().toISOString(),
         status: data.status || 'In Production',
-        entryType: entryType,
+        entryType,
         compound: data.compound ? { ...data.compound } : undefined,
       };
       onAdd?.(newBelt);
@@ -132,7 +273,7 @@ export default function NewBeltDialog({
         <DialogTrigger asChild>
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            New Belt
+            New Belt (Auto)
           </Button>
         </DialogTrigger>
       )}
@@ -140,7 +281,7 @@ export default function NewBeltDialog({
       <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col p-0">
         <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <DialogTitle className="text-xl font-semibold">
-            {isEditMode ? 'Edit Belt - Reverse Tracking' : 'Create New Belt - Reverse Tracking'}
+            {isEditMode ? 'Edit Belt - Auto Calculated' : 'Create New Belt - Auto Calculated'}
           </DialogTitle>
         </DialogHeader>
 
@@ -170,7 +311,7 @@ export default function NewBeltDialog({
                 </TabsTrigger>
               </TabsList>
 
-              {/* Step 1: Belt Specifications */}
+              {/* Step 1 */}
               <TabsContent value="step1" className="space-y-6 mt-0">
                 <div className="space-y-4">
                   <div className="space-y-2">
@@ -207,11 +348,10 @@ export default function NewBeltDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      {rating && (
-                        <p className="text-xs text-muted-foreground mt-1.5">
-                          Strength: {FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength}
-                        </p>
-                      )}
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        Plies: {parseNumberOfPliesFromRating(rating)} — Fabric consumed (m):{' '}
+                        {watch('fabric.consumedMeters') ?? '-'}
+                      </p>
                     </div>
 
                     <div className="space-y-2">
@@ -456,7 +596,7 @@ export default function NewBeltDialog({
                 </div>
               </TabsContent>
 
-              {/* Step 2: Fabric & Compound */}
+              {/* Step 2 */}
               <TabsContent value="step2" className="space-y-6 mt-0">
                 <div className="space-y-4">
                   <h3 className="text-base font-semibold">Fabric Information</h3>
@@ -488,34 +628,50 @@ export default function NewBeltDialog({
 
                   <div className="space-y-2">
                     <Label htmlFor="fabricConsumed" className="text-sm font-medium">
-                      Fabric Consumed (meters)
+                      Fabric Consumed (meters) — (auto)
                     </Label>
                     <Input
                       id="fabricConsumed"
-                      type="number"
-                      step="0.1"
-                      {...register('fabric.consumedMeters', { valueAsNumber: true })}
+                      {...register('fabric.consumedMeters')}
                       className="h-10"
-                      placeholder="e.g. 100.5"
+                      readOnly
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Enter the amount of fabric consumed in meters
+                      Calculated: belt_length * number_of_plies * 1.02
                     </p>
                   </div>
 
                   {rating && (
-                    <div className="bg-muted/50 rounded-lg p-4 space-y-1">
-                      <p className="text-sm font-medium">Selected Fabric Details:</p>
-                      <p className="text-sm text-muted-foreground">Rating: {rating}</p>
-                      <p className="text-sm text-muted-foreground">
-                        Strength: {FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                      <p className="text-sm font-semibold text-blue-900">
+                        Fabric Calculation Values:
                       </p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="text-muted-foreground">Rating:</p>
+                          <p className="font-mono font-medium">{rating}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Number of Plies:</p>
+                          <p className="font-mono font-medium">{calcValues.numberOfPlies}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Belt Length (m):</p>
+                          <p className="font-mono font-medium">{beltLengthM ?? '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-muted-foreground">Strength:</p>
+                          <p className="font-mono font-medium">
+                            {FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength ?? '-'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
 
                 <div className="border-t pt-6 space-y-4">
-                  <h3 className="text-base font-semibold">Compound Information</h3>
+                  <h3 className="text-base font-semibold">Compound Information (auto)</h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -539,6 +695,7 @@ export default function NewBeltDialog({
                         </SelectContent>
                       </Select>
                     </div>
+
                     <div className="space-y-2">
                       <Label htmlFor="skimCompoundType" className="text-sm font-medium">
                         Skim Compound Type
@@ -562,96 +719,84 @@ export default function NewBeltDialog({
                     </div>
                   </div>
 
-                  {/* DISABLED: Manual mode only for now - keeping for future auto mode use */}
-                  {/* {compoundId && (
-                    <div className="bg-muted/50 border rounded-lg p-3 space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Compound ID</p>
-                      <p className="text-sm font-mono font-semibold">{compoundId}</p>
-                      <p className="text-xs text-muted-foreground">Auto-generated from cover compound type and produced on date</p>
-                    </div>
-                  )} */}
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="coverCompoundConsumed" className="text-sm font-medium">
-                        Cover Compound Consumed
+                        Cover Compound Consumed (kg) — (auto)
                       </Label>
                       <Input
                         id="coverCompoundConsumed"
-                        type="number"
-                        step="0.1"
-                        {...register('compound.coverCompoundConsumed', { valueAsNumber: true })}
+                        {...register('compound.coverCompoundConsumed')}
                         className="h-10"
-                        placeholder="Enter amount consumed in kg"
+                        readOnly
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Enter the amount of cover compound consumed
+                        Calculated by cover weight formula
                       </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="skimCompoundConsumed" className="text-sm font-medium">
-                        Skim Compound Consumed
+                        Skim Compound Consumed (kg) — (auto)
                       </Label>
                       <Input
                         id="skimCompoundConsumed"
-                        type="number"
-                        step="0.1"
-                        {...register('compound.skimCompoundConsumed', { valueAsNumber: true })}
+                        {...register('compound.skimCompoundConsumed')}
                         className="h-10"
-                        placeholder="Enter amount consumed in kg"
+                        readOnly
                       />
                       <p className="text-xs text-muted-foreground mt-1.5">
-                        Enter the amount of skim compound consumed
+                        Calculated by skim weight formula
                       </p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="coverCompoundProducedOn" className="text-sm font-medium">
-                        Cover Compound Produced On
-                      </Label>
-                      <DatePicker
-                        id="coverCompoundProducedOn"
-                        date={
-                          watch('compound.coverCompoundProducedOn')
-                            ? parseDateString(watch('compound.coverCompoundProducedOn')!)
-                            : undefined
-                        }
-                        onDateChange={(date) =>
-                          setValue(
-                            'compound.coverCompoundProducedOn',
-                            date ? formatDateString(date) : undefined
-                          )
-                        }
-                        placeholder="Select cover compound produced date"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        Date when cover compound was produced
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="skimCompoundProducedOn" className="text-sm font-medium">
-                        Skim Compound Produced On
-                      </Label>
-                      <DatePicker
-                        id="skimCompoundProducedOn"
-                        date={
-                          watch('compound.skimCompoundProducedOn')
-                            ? parseDateString(watch('compound.skimCompoundProducedOn')!)
-                            : undefined
-                        }
-                        onDateChange={(date) =>
-                          setValue(
-                            'compound.skimCompoundProducedOn',
-                            date ? formatDateString(date) : undefined
-                          )
-                        }
-                        placeholder="Select skim compound produced date"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1.5">
-                        Date when skim compound was produced
-                      </p>
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2">
+                    <p className="text-sm font-semibold text-green-900">
+                      Compound Calculation Values:
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                      <div>
+                        <p className="text-muted-foreground">Top Cover (mm):</p>
+                        <p className="font-mono font-medium">{topCoverMm ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Bottom Cover (mm):</p>
+                        <p className="font-mono font-medium">{bottomCoverMm ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Cover Thickness (mm):</p>
+                        <p className="font-mono font-medium">
+                          {calcValues.coverThicknessMm.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Belt Width (m):</p>
+                        <p className="font-mono font-medium">
+                          {calcValues.beltWidthM?.toFixed(3) ?? '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Belt Length (m):</p>
+                        <p className="font-mono font-medium">{beltLengthM ?? '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Cover SG:</p>
+                        <p className="font-mono font-medium">{calcValues.coverSG.toFixed(3)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Skim SG:</p>
+                        <p className="font-mono font-medium">{calcValues.skimSG.toFixed(3)}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Total Skim Thickness (mm):</p>
+                        <p className="font-mono font-medium">
+                          {calcValues.skimThicknessMm.toFixed(3)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Number of Plies:</p>
+                        <p className="font-mono font-medium">{calcValues.numberOfPlies}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -673,112 +818,82 @@ export default function NewBeltDialog({
                 </div>
               </TabsContent>
 
-              {/* Step 3: Process Dates */}
+              {/* Step 3 */}
               <TabsContent value="step3" className="space-y-6 mt-0">
                 <div className="space-y-4">
-                  <h3 className="text-base font-semibold">Production Timeline</h3>
+                  <h3 className="text-base font-semibold">Production Timeline (auto calculated)</h3>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-900">
-                      💡 Enter dates for all completed stages manually.
+                      💡 Set dispatch date to auto-calculate other dates. Or enter dates manually.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="calendaringDate" className="text-sm font-medium">
-                      Calendaring Date <span className="text-red-500">*</span>
+                    <Label htmlFor="dispatchDate" className="text-sm font-medium">
+                      Dispatch Date
                     </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <DatePicker
-                        id="calendaringDate"
-                        date={calendaringDate ? parseDateString(calendaringDate) : undefined}
-                        onDateChange={(date) => {
-                          const dateStr = date ? formatDateString(date) : undefined;
-                          setValue('process.calendaringDate', dateStr, { shouldValidate: true });
-                        }}
-                        placeholder="Select calendaring date"
-                      />
-                      <div className="space-y-2">
-                        <Label htmlFor="calendaringMachine" className="text-sm font-medium">
-                          Cal #
-                        </Label>
-                        <Input
-                          id="calendaringMachine"
-                          {...register('process.calendaringMachine')}
-                          placeholder="Enter machine number"
-                          className="h-10"
-                        />
-                      </div>
-                    </div>
+                    <DatePicker
+                      id="dispatchDate"
+                      date={
+                        watch('process.dispatchDate')
+                          ? parseDateString(watch('process.dispatchDate')!)
+                          : undefined
+                      }
+                      onDateChange={(date) =>
+                        setValue('process.dispatchDate', date ? formatDateString(date) : undefined)
+                      }
+                      placeholder="Select dispatch date"
+                    />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Date when fabric and rubber were combined
+                      Enter dispatch date — other dates will be inferred
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="greenBeltDate" className="text-sm font-medium">
-                      Green Belt Date
+                    <Label htmlFor="packagingDate" className="text-sm font-medium">
+                      Packaging Date
                     </Label>
                     <DatePicker
-                      id="greenBeltDate"
+                      id="packagingDate"
                       date={
-                        watch('process.greenBeltDate')
-                          ? parseDateString(watch('process.greenBeltDate')!)
+                        watch('process.packagingDate')
+                          ? parseDateString(watch('process.packagingDate')!)
                           : undefined
                       }
                       onDateChange={(date) =>
-                        setValue('process.greenBeltDate', date ? formatDateString(date) : undefined)
+                        setValue('process.packagingDate', date ? formatDateString(date) : undefined)
                       }
-                      placeholder="Select green belt date"
+                      placeholder="Select packaging date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Date when uncured belt was assembled
+                      Enter packaging date manually
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="greenBeltMachine" className="text-sm font-medium">
-                      Table #
-                    </Label>
-                    <Input
-                      id="greenBeltMachine"
-                      {...register('process.greenBeltMachine')}
-                      placeholder="Enter table number"
-                      className="h-10"
-                    />
-                  </div>
+                  <div className="space-y-2">{/* Empty space for alignment */}</div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="curingDate" className="text-sm font-medium">
-                      Curing (Press) Date
+                    <Label htmlFor="pidDate" className="text-sm font-medium">
+                      PDI Date (Pre Dispatch Inspection)
                     </Label>
                     <DatePicker
-                      id="curingDate"
+                      id="pidDate"
                       date={
-                        watch('process.curingDate')
-                          ? parseDateString(watch('process.curingDate')!)
+                        watch('process.pidDate')
+                          ? parseDateString(watch('process.pidDate')!)
                           : undefined
                       }
                       onDateChange={(date) =>
-                        setValue('process.curingDate', date ? formatDateString(date) : undefined)
+                        setValue('process.pidDate', date ? formatDateString(date) : undefined)
                       }
-                      placeholder="Select curing date"
+                      placeholder="Select PDI date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Date when belt was vulcanized
+                      Pre Dispatch Inspection - Third party quality check
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="curingMachine" className="text-sm font-medium">
-                      Press #
-                    </Label>
-                    <Input
-                      id="curingMachine"
-                      {...register('process.curingMachine')}
-                      placeholder="Enter press number"
-                      className="h-10"
-                    />
-                  </div>
+                  <div className="space-y-2">{/* Empty space for alignment */}</div>
 
                   <div className="space-y-2">
                     <Label htmlFor="inspectionDate" className="text-sm font-medium">
@@ -816,67 +931,150 @@ export default function NewBeltDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="pidDate" className="text-sm font-medium">
-                      PDI Date (Pre Dispatch Inspection)
+                    <Label htmlFor="curingDate" className="text-sm font-medium">
+                      Curing (Press) Date
                     </Label>
                     <DatePicker
-                      id="pidDate"
+                      id="curingDate"
                       date={
-                        watch('process.pidDate')
-                          ? parseDateString(watch('process.pidDate')!)
+                        watch('process.curingDate')
+                          ? parseDateString(watch('process.curingDate')!)
                           : undefined
                       }
                       onDateChange={(date) =>
-                        setValue('process.pidDate', date ? formatDateString(date) : undefined)
+                        setValue('process.curingDate', date ? formatDateString(date) : undefined)
                       }
-                      placeholder="Select PDI date"
+                      placeholder="Select curing date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Pre Dispatch Inspection - Third party quality check
+                      Date when belt was vulcanized
                     </p>
                   </div>
-                  <div className="space-y-2">{/* Empty space for alignment */}</div>
+                  <div className="space-y-2">
+                    <Label htmlFor="curingMachine" className="text-sm font-medium">
+                      Press #
+                    </Label>
+                    <Input
+                      id="curingMachine"
+                      {...register('process.curingMachine')}
+                      placeholder="Enter press number"
+                      className="h-10"
+                    />
+                  </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="packagingDate" className="text-sm font-medium">
-                      Packaging Date
+                    <Label htmlFor="greenBeltDate" className="text-sm font-medium">
+                      Green Belt Date
                     </Label>
                     <DatePicker
-                      id="packagingDate"
+                      id="greenBeltDate"
                       date={
-                        watch('process.packagingDate')
-                          ? parseDateString(watch('process.packagingDate')!)
+                        watch('process.greenBeltDate')
+                          ? parseDateString(watch('process.greenBeltDate')!)
                           : undefined
                       }
                       onDateChange={(date) =>
-                        setValue('process.packagingDate', date ? formatDateString(date) : undefined)
+                        setValue('process.greenBeltDate', date ? formatDateString(date) : undefined)
                       }
-                      placeholder="Select packaging date"
+                      placeholder="Select green belt date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Enter packaging date manually
+                      Date when uncured belt was assembled
                     </p>
                   </div>
-                  <div className="space-y-2">{/* Empty space for alignment */}</div>
+                  <div className="space-y-2">
+                    <Label htmlFor="greenBeltMachine" className="text-sm font-medium">
+                      Table #
+                    </Label>
+                    <Input
+                      id="greenBeltMachine"
+                      {...register('process.greenBeltMachine')}
+                      placeholder="Enter table number"
+                      className="h-10"
+                    />
+                  </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="dispatchDate" className="text-sm font-medium">
-                      Dispatch Date
+                    <Label htmlFor="calendaringDate" className="text-sm font-medium">
+                      Calendaring Date
                     </Label>
                     <DatePicker
-                      id="dispatchDate"
+                      id="calendaringDate"
                       date={
-                        watch('process.dispatchDate')
-                          ? parseDateString(watch('process.dispatchDate')!)
+                        watch('process.calendaringDate')
+                          ? parseDateString(watch('process.calendaringDate')!)
                           : undefined
                       }
                       onDateChange={(date) =>
-                        setValue('process.dispatchDate', date ? formatDateString(date) : undefined)
+                        setValue(
+                          'process.calendaringDate',
+                          date ? formatDateString(date) : undefined
+                        )
                       }
-                      placeholder="Select dispatch date"
+                      placeholder="Select calendaring date"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Date when fabric and rubber were combined
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="calendaringMachine" className="text-sm font-medium">
+                      Cal #
+                    </Label>
+                    <Input
+                      id="calendaringMachine"
+                      {...register('process.calendaringMachine')}
+                      placeholder="Enter machine number"
+                      className="h-10"
                     />
                   </div>
-                  <div className="space-y-2">{/* Empty space for alignment */}</div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="coverCompoundProducedOn" className="text-sm font-medium">
+                      Cover Compound Produced On (auto) — D − 26 to D − 13
+                    </Label>
+                    <DatePicker
+                      id="coverCompoundProducedOn"
+                      date={
+                        watch('compound.coverCompoundProducedOn')
+                          ? parseDateString(watch('compound.coverCompoundProducedOn')!)
+                          : undefined
+                      }
+                      onDateChange={(date) =>
+                        setValue(
+                          'compound.coverCompoundProducedOn',
+                          date ? formatDateString(date) : undefined
+                        )
+                      }
+                      placeholder="Select cover compound produced date"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Auto-calculated from dispatch date (random within -26 to -13 days)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="skimCompoundProducedOn" className="text-sm font-medium">
+                      Skim Compound Produced On (auto) — D − 26 to D − 13
+                    </Label>
+                    <DatePicker
+                      id="skimCompoundProducedOn"
+                      date={
+                        watch('compound.skimCompoundProducedOn')
+                          ? parseDateString(watch('compound.skimCompoundProducedOn')!)
+                          : undefined
+                      }
+                      onDateChange={(date) =>
+                        setValue(
+                          'compound.skimCompoundProducedOn',
+                          date ? formatDateString(date) : undefined
+                        )
+                      }
+                      placeholder="Select skim compound produced date"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1.5">
+                      Auto-calculated from dispatch date (random within -26 to -13 days)
+                    </p>
+                  </div>
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t">

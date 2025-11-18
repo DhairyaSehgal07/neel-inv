@@ -1,4 +1,5 @@
 // src/lib/data.ts
+
 export type FabricType = 'EP' | 'NN' | 'EE' | 'Other';
 export type CompoundType =
   | 'Nylon'
@@ -14,43 +15,36 @@ export type CompoundType =
   | 'SKIM_N'
   | 'SKIM_L';
 
+export type EdgeType = 'Cut' | 'Moulded';
+export type BeltStatus = 'Dispatched' | 'In Production';
+export type EntryType = 'Manual' | 'Auto';
+
 export interface FabricLookupItem {
-  rating: string; // e.g. "630/4"
-  strength: number; // numeric strength lookup
+  rating: string;
+  strength: number;
 }
 
-export type EdgeType = 'Cut' | 'Moulded';
-export type TrackingMode = 'auto' | 'manual';
-
 export interface ProcessDates {
-  calendaringDate?: string; // ISO date strings
-  calendaringMachine?: string; // Cal #
+  calendaringDate?: string;
+  calendaringMachine?: string;
   greenBeltDate?: string;
-  greenBeltMachine?: string; // Table #
+  greenBeltMachine?: string;
   curingDate?: string;
-  curingMachine?: string; // Press #
+  curingMachine?: string;
   inspectionDate?: string;
-  inspectionMachine?: string; // Inspection Station
+  inspectionMachine?: string;
   pidDate?: string;
   packagingDate?: string;
   dispatchDate?: string;
 }
 
 export interface CompoundInfo {
-  type?: CompoundType; // Legacy - kept for backward compatibility
   coverCompoundType?: CompoundType;
   skimCompoundType?: CompoundType;
-  producedOn?: string; // Legacy - kept for backward compatibility
-  coverCompoundProducedOn?: string; // Date when cover compound was produced
-  skimCompoundProducedOn?: string; // Date when skim compound was produced
-  coverCompoundUsedOn?: string; // Legacy - kept for backward compatibility
-  skimCompoundUsedOn?: string; // Legacy - kept for backward compatibility
-  usedOn?: string; // Auto-set to calendaring date (not shown in form)
-  lotSize?: number; // Legacy - kept for backward compatibility
-  batchWeight?: number; // Legacy - kept for backward compatibility
-  coverCompoundLotSize?: number; // Cover compound batch weight
-  skimCompoundLotSize?: number; // Skim compound batch weight
-  compoundId?: string; // Generated ID: compoundType_date (e.g., "M-24_2025-11-03")
+  coverCompoundProducedOn?: string;
+  skimCompoundProducedOn?: string;
+  coverCompoundConsumed?: number;
+  skimCompoundConsumed?: number;
 }
 
 export interface FabricInfo {
@@ -59,7 +53,7 @@ export interface FabricInfo {
   strength?: number;
   supplier?: string;
   rollNumber?: string;
-  consumedMeters?: number; // Fabric consumed in meters
+  consumedMeters?: number;
 }
 
 export interface Belt {
@@ -69,8 +63,8 @@ export interface Belt {
   fabric?: FabricInfo;
   topCoverMm?: number;
   bottomCoverMm?: number;
-  beltLengthM?: number; // Belt length in meters
-  beltWidthMm?: number; // Belt width in millimeters
+  beltLengthM?: number;
+  beltWidthMm?: number;
   edge?: EdgeType;
   breakerPly?: boolean;
   breakerPlyRemarks?: string;
@@ -82,14 +76,13 @@ export interface Belt {
   deliveryDeadline?: string;
   compound?: CompoundInfo;
   process?: ProcessDates;
-  status: 'Dispatched' | 'In Production';
-  trackingMode?: TrackingMode; // 'auto' or 'manual' for In Production belts
-  entryType?: 'Manual' | 'Auto'; // Entry type: Manual or Auto
+  status: BeltStatus;
+  entryType?: EntryType;
   createdAt?: string;
 }
 
 /**
- * Complete Fabric rating -> strength lookup table from PRD
+ * Fabric rating to strength lookup table
  */
 export const FABRIC_LOOKUP: FabricLookupItem[] = [
   { rating: '200/2', strength: 100 },
@@ -127,7 +120,7 @@ export const FABRIC_LOOKUP: FabricLookupItem[] = [
 ];
 
 /**
- * Compound options for dropdowns
+ * Available compound types
  */
 export const COMPOUNDS: CompoundType[] = [
   'Nylon',
@@ -144,10 +137,6 @@ export const COMPOUNDS: CompoundType[] = [
   'SKIM_L',
 ];
 
-/**
- * Holiday list (ISO date strings) - excludes Sundays and government holidays
- * Expand later from Settings UI
- */
 export const HOLIDAYS = [
   '2025-01-26', // Republic Day (India)
   '2025-08-15', // Independence Day
@@ -156,102 +145,147 @@ export const HOLIDAYS = [
   '2025-12-25', // Christmas
 ];
 
-/**
- * Sample belts for testing
- */
 export const SAMPLE_BELTS: Belt[] = [
   {
-    id: 'b1',
-    beltNumber: 'Belt #14598',
+    id: 'belt-001',
+    beltNumber: 'BELT-2025-001',
     rating: '630/4',
+    fabric: {
+      type: 'EP',
+      rating: '630/4',
+      strength: 160,
+      supplier: 'ABC Fabrics Ltd.',
+      rollNumber: 'RL-98231',
+      consumedMeters: 120,
+    },
     topCoverMm: 6,
-    bottomCoverMm: 3,
-    carcassMm: 0,
-    fabric: { type: 'EP', rating: '630/4', strength: 160, supplier: 'Alpha Fabrics' },
-    compound: { type: 'Layer3', producedOn: '2025-11-03', usedOn: '2025-11-10' },
-    process: {
-      calendaringDate: '2025-11-10',
-      greenBeltDate: '2025-11-10',
-      curingDate: '2025-11-11',
-      inspectionDate: '2025-11-14',
+    bottomCoverMm: 4,
+    beltLengthM: 250,
+    beltWidthMm: 1200,
+    edge: 'Cut',
+    breakerPly: false,
+    carcassMm: 4.5,
+    coverGrade: 'M-24',
+    orderNumber: 'ORD-7891',
+    buyerName: 'Shivam Minerals Pvt Ltd.',
+    orderDate: '2025-02-10',
+    deliveryDeadline: '2025-03-05',
+    compound: {
+      coverCompoundType: 'M-24',
+      skimCompoundType: 'SKIM_N',
+      coverCompoundProducedOn: '2025-02-12',
+      skimCompoundProducedOn: '2025-02-12',
+      coverCompoundConsumed: 320,
+      skimCompoundConsumed: 180,
     },
-    orderNumber: 'ORD-2025-001',
-    buyerName: 'ABC Industries',
-    orderDate: '2025-10-15',
-    deliveryDeadline: '2025-11-30',
+    process: {
+      calendaringDate: '2025-02-15',
+      calendaringMachine: 'CAL-02',
+      greenBeltDate: '2025-02-17',
+      greenBeltMachine: 'GB-01',
+      curingDate: '2025-02-22',
+      curingMachine: 'CUR-03',
+      inspectionDate: '2025-02-24',
+      inspectionMachine: 'INSP-01',
+      pidDate: '2025-02-25',
+      packagingDate: '2025-02-26',
+    },
     status: 'In Production',
-    entryType: 'Manual',
-    createdAt: '2025-11-01T08:00:00.000Z',
+    entryType: 'Auto',
+    createdAt: '2025-02-10T10:22:00Z',
   },
+
   {
-    id: 'b2',
-    beltNumber: 'Belt #14599',
-    rating: '500/3',
-    topCoverMm: 5,
-    bottomCoverMm: 2,
-    carcassMm: 0,
-    fabric: { type: 'NN', rating: '500/3', strength: 160, supplier: 'Beta Textiles' },
-    compound: { type: 'FR', producedOn: '2025-10-01', usedOn: '2025-10-08' },
-    process: {
-      calendaringDate: '2025-10-08',
-      greenBeltDate: '2025-10-08',
-      curingDate: '2025-10-09',
-      inspectionDate: '2025-10-12',
-      pidDate: '2025-10-15',
-      packagingDate: '2025-10-18',
-      dispatchDate: '2025-10-20',
+    id: 'belt-002',
+    beltNumber: 'BELT-2025-002',
+    rating: '800/4',
+    fabric: {
+      type: 'NN',
+      rating: '800/4',
+      strength: 200,
+      supplier: 'Global Belt Fabrics',
+      rollNumber: 'RL-77122',
+      consumedMeters: 150,
     },
-    orderNumber: 'ORD-2025-002',
-    buyerName: 'XYZ Corp',
-    orderDate: '2025-09-20',
-    deliveryDeadline: '2025-10-25',
+    topCoverMm: 8,
+    bottomCoverMm: 5,
+    beltLengthM: 320,
+    beltWidthMm: 1400,
+    edge: 'Moulded',
+    breakerPly: true,
+    breakerPlyRemarks: 'Breaker ply added for impact resistance',
+    carcassMm: 5,
+    coverGrade: 'HR',
+    orderNumber: 'ORD-8105',
+    buyerName: 'Sunrise Coal Traders',
+    orderDate: '2025-03-01',
+    deliveryDeadline: '2025-03-25',
+    compound: {
+      coverCompoundType: 'HR',
+      skimCompoundType: 'SKIM_L',
+      coverCompoundProducedOn: '2025-03-03',
+      skimCompoundProducedOn: '2025-03-03',
+      coverCompoundConsumed: 400,
+      skimCompoundConsumed: 210,
+    },
+    process: {
+      calendaringDate: '2025-03-06',
+      calendaringMachine: 'CAL-01',
+      greenBeltDate: '2025-03-09',
+      curingDate: '2025-03-14',
+      curingMachine: 'CUR-01',
+      inspectionDate: '2025-03-16',
+      pidDate: '2025-03-17',
+      packagingDate: '2025-03-18',
+      dispatchDate: '2025-03-19',
+    },
     status: 'Dispatched',
     entryType: 'Manual',
-    createdAt: '2025-10-01T08:00:00.000Z',
+    createdAt: '2025-03-01T08:10:00Z',
   },
-];
 
-// Legacy type for backward compatibility
-export type ReverseTrackingRecord = {
-  id: string;
-  batchNumber: string;
-  date: string;
-  productType: string;
-  quantityReturned: number;
-  reason: string;
-  processedBy: string;
-  status: "Pending" | "Processed" | "Rejected";
-};
-
-export const reverseTrackingData: ReverseTrackingRecord[] = [
   {
-    id: "1",
-    batchNumber: "NRM-2025-001",
-    date: "2025-11-10",
-    productType: "Rubber Hose",
-    quantityReturned: 20,
-    reason: "Defective material",
-    processedBy: "Ramesh",
-    status: "Pending",
-  },
-  {
-    id: "2",
-    batchNumber: "NRM-2025-002",
-    date: "2025-11-09",
-    productType: "Rubber Sheet",
-    quantityReturned: 10,
-    reason: "Size mismatch",
-    processedBy: "Suresh",
-    status: "Processed",
-  },
-  {
-    id: "3",
-    batchNumber: "NRM-2025-003",
-    date: "2025-11-08",
-    productType: "Rubber Gasket",
-    quantityReturned: 15,
-    reason: "Late return",
-    processedBy: "Mahesh",
-    status: "Rejected",
+    id: 'belt-003',
+    beltNumber: 'BELT-2025-003',
+    rating: '500/3',
+    fabric: {
+      type: 'EE',
+      rating: '500/3',
+      strength: 160,
+      supplier: 'Fine Weave Industries',
+      rollNumber: 'RL-55108',
+      consumedMeters: 90,
+    },
+    topCoverMm: 5,
+    bottomCoverMm: 3,
+    beltLengthM: 180,
+    beltWidthMm: 1000,
+    edge: 'Cut',
+    breakerPly: false,
+    carcassMm: 4,
+    coverGrade: 'N-17',
+    orderNumber: 'ORD-5543',
+    buyerName: 'Patel Aggregates',
+    orderDate: '2025-01-15',
+    deliveryDeadline: '2025-02-10',
+    compound: {
+      coverCompoundType: 'N-17',
+      skimCompoundType: 'SKIM_N',
+      coverCompoundProducedOn: '2025-01-18',
+      skimCompoundProducedOn: '2025-01-18',
+      coverCompoundConsumed: 260,
+      skimCompoundConsumed: 130,
+    },
+    process: {
+      calendaringDate: '2025-01-20',
+      greenBeltDate: '2025-01-22',
+      curingDate: '2025-01-28',
+      inspectionDate: '2025-01-29',
+      pidDate: '2025-01-30',
+      packagingDate: '2025-01-31',
+    },
+    status: 'In Production',
+    entryType: 'Auto',
+    createdAt: '2025-01-15T09:15:00Z',
   },
 ];
