@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.8...v0.2.9) (2025-11-18)
+
+
+### Bug Fixes
+
+* resolve TypeScript errors and remove duplicate Mongoose indexes ([ac916cd](https://github.com/DhairyaSehgal07/neel-inv/commit/ac916cd6ff18b8496cb6fdb17436fda394c5f33f))
+
 ### [0.2.8](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.6...v0.2.8) (2025-11-18)
 
 
