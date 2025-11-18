@@ -71,7 +71,6 @@ export default function NewBeltDialog({
   const breakerPly = watch('breakerPly');
   const calendaringDate = watch('process.calendaringDate');
   const beltWidthMm = watch('beltWidthMm');
-  const beltWidthM = beltWidthMm ? beltWidthMm / 1000 : undefined;
 
   // Auto-fill fabric strength when rating is selected
   useEffect(() => {
@@ -277,20 +276,20 @@ export default function NewBeltDialog({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="beltWidth" className="text-sm font-medium">
-                        Belt Width (m)
+                        Belt Width (mm)
                       </Label>
                       <Input
                         id="beltWidth"
                         type="number"
-                        step="0.001"
-                        value={beltWidthM ?? ''}
+                        step="0.1"
+                        value={beltWidthMm ?? ''}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
-                          // Convert meters to millimeters for storage
-                          setValue('beltWidthMm', isNaN(value) ? undefined : value * 1000);
+                          // Store in millimeters
+                          setValue('beltWidthMm', isNaN(value) ? undefined : value);
                         }}
                         className="h-10"
-                        placeholder="e.g. 1.2"
+                        placeholder="e.g. 1200"
                       />
                     </div>
                   </div>

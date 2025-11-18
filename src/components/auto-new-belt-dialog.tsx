@@ -34,6 +34,7 @@ import {
   skim_weight_kg,
   skim_thickness_from_strength,
   process_dates_from_dispatch,
+  getSeparateCompoundDates,
 } from '@/lib/calculations';
 
 interface NewBeltDialogAutoProps {
@@ -89,6 +90,7 @@ export default function NewBeltDialogAuto({
   const rating = watch('rating');
   const beltLengthM = watch('beltLengthM');
   const beltWidthMm = watch('beltWidthMm');
+  // Convert mm to meters for calculations
   const beltWidthM = beltWidthMm ? beltWidthMm / 1000 : undefined;
   const topCoverMm = watch('topCoverMm');
   const bottomCoverMm = watch('bottomCoverMm');
@@ -205,10 +207,15 @@ export default function NewBeltDialogAuto({
       if (pd.green_belt_date) setValue('process.greenBeltDate', pd.green_belt_date);
       if (pd.calendaring_date) setValue('process.calendaringDate', pd.calendaring_date);
 
-      // 9) compound produced-on dates: use the compound date from process dates (D - 26 to D - 13)
+      // 9) compound produced-on dates: ensure one compound per day policy
       if (pd.compound_date) {
-        setValue('compound.coverCompoundProducedOn', pd.compound_date);
-        setValue('compound.skimCompoundProducedOn', pd.compound_date);
+        const separateDates = getSeparateCompoundDates(pd.compound_date);
+        if (separateDates.cover_compound_date) {
+          setValue('compound.coverCompoundProducedOn', separateDates.cover_compound_date);
+        }
+        if (separateDates.skim_compound_date) {
+          setValue('compound.skimCompoundProducedOn', separateDates.skim_compound_date);
+        }
       }
     }
   }, [
@@ -417,20 +424,20 @@ export default function NewBeltDialogAuto({
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="beltWidth" className="text-sm font-medium">
-                        Belt Width (m)
+                        Belt Width (mm)
                       </Label>
                       <Input
                         id="beltWidth"
                         type="number"
-                        step="0.001"
-                        value={beltWidthM ?? ''}
+                        step="0.1"
+                        value={beltWidthMm ?? ''}
                         onChange={(e) => {
                           const value = parseFloat(e.target.value);
-                          // Convert meters to millimeters for storage
-                          setValue('beltWidthMm', isNaN(value) ? undefined : value * 1000);
+                          // Store in millimeters
+                          setValue('beltWidthMm', isNaN(value) ? undefined : value);
                         }}
                         className="h-10"
-                        placeholder="e.g. 1.2"
+                        placeholder="e.g. 1200"
                       />
                     </div>
                   </div>
@@ -1031,7 +1038,7 @@ export default function NewBeltDialogAuto({
 
                   <div className="space-y-2">
                     <Label htmlFor="coverCompoundProducedOn" className="text-sm font-medium">
-                      Cover Compound Produced On (auto) — D − 26 to D − 13
+                      Cover Compound Produced On (auto) — Cal − 2 to Cal − 7
                     </Label>
                     <DatePicker
                       id="coverCompoundProducedOn"
@@ -1049,12 +1056,12 @@ export default function NewBeltDialogAuto({
                       placeholder="Select cover compound produced date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Auto-calculated from dispatch date (random within -26 to -13 days)
+                      Auto-calculated from calendaring date (random within -2 to -7 days). Different from skim compound date (one compound per day policy).
                     </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="skimCompoundProducedOn" className="text-sm font-medium">
-                      Skim Compound Produced On (auto) — D − 26 to D − 13
+                      Skim Compound Produced On (auto) — Cal − 2 to Cal − 7
                     </Label>
                     <DatePicker
                       id="skimCompoundProducedOn"
@@ -1072,7 +1079,7 @@ export default function NewBeltDialogAuto({
                       placeholder="Select skim compound produced date"
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
-                      Auto-calculated from dispatch date (random within -26 to -13 days)
+                      Auto-calculated from calendaring date (random within -2 to -7 days). Different from cover compound date (one compound per day policy).
                     </p>
                   </div>
                 </div>

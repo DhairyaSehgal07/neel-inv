@@ -237,16 +237,16 @@ export function randomBetween(min: number, max: number): number {
 
 /**
  * Process States (reverse-calculated) — given dispatch date (ISO string),
- * compute earlier dates using the specified ranges:
+ * compute earlier dates using sequential pattern:
  *
- * Given a Dispatch Date (D):
- * - Packaging: D − 1
- * - PDI: D − 5 to D − 4 (random in range)
- * - Internal Inspection: D − 15 to D − 8 (random in range)
- * - Curing: D − 17 to D − 10 (random in range)
- * - Green Belt: D − 18 to D − 11 (random in range)
- * - Calendaring: D − 19 to D − 11 (random in range)
- * - Compound Production: D − 26 to D − 13 (random in range)
+ * 1. Dispatch Date (D) - input
+ * 2. Packaging: D − 1 day
+ * 3. PDI: D − 4 to D − 5 days (random in range)
+ * 4. Internal Inspection: PDI − 4 to PDI − 10 days (random in range)
+ * 5. Curing: Internal Inspection − 2 days (fixed)
+ * 6. Green Belt: Curing − 1 day (fixed)
+ * 7. Calendaring: Green Belt (same day) or Green Belt − 1 day (random)
+ * 8. Compound: Calendaring − 2 to Calendaring − 7 days (random in range)
  *
  * All returned as ISO date strings (YYYY-MM-DD).
  */
@@ -262,7 +262,7 @@ export function process_dates_from_dispatch(dispatchDateIso?: string) {
   const dispatch = new Date(dispatchDateIso);
 
   // Helper function to generate a date offset by days from a base date,
-  // skipping Sundays and holidays
+  // skipping Sundays and holidays (going backwards in time)
   const dateMinusDaysSkippingHolidaysAndSundays = (baseDate: Date, days: number): Date => {
     const result = new Date(baseDate);
     let daysRemaining = days;
@@ -277,35 +277,37 @@ export function process_dates_from_dispatch(dispatchDateIso?: string) {
     return result;
   };
 
-  // 1. Packaging: D − 1 (fixed)
+  // 1. Dispatch Date (input)
+  // dispatch is already set
+
+  // 2. Packaging: D − 1 day (fixed)
   const packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1);
 
-  // 2. PDI: D − 5 to D − 4 (random in range)
+  // 3. PDI: D − 4 to D − 5 days (random in range)
   const pdiOffset = randomBetween(4, 5);
   const pdi = dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset);
 
-  // 3. Internal Inspection: D − 15 to D − 8 (random in range)
-  const internalInspectionOffset = randomBetween(8, 15);
-  const internalInspection = dateMinusDaysSkippingHolidaysAndSundays(
-    dispatch,
-    internalInspectionOffset
-  );
+  // 4. Internal Inspection: PDI − 4 to PDI − 10 days (random in range)
+  const internalInspectionOffset = randomBetween(4, 10);
+  const internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, internalInspectionOffset);
 
-  // 4. Curing: D − 17 to D − 10 (random in range)
-  const curingOffset = randomBetween(10, 17);
-  const curing = dateMinusDaysSkippingHolidaysAndSundays(dispatch, curingOffset);
+  // 5. Curing: Internal Inspection − 2 days (fixed)
+  const curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2);
 
-  // 5. Green Belt: D − 18 to D − 11 (random in range)
-  const greenBeltOffset = randomBetween(11, 18);
-  const greenBelt = dateMinusDaysSkippingHolidaysAndSundays(dispatch, greenBeltOffset);
+  // 6. Green Belt: Curing − 1 day (fixed)
+  const greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1);
 
-  // 6. Calendaring: D − 19 to D − 11 (random in range)
-  const calendaringOffset = randomBetween(11, 19);
-  const calendaring = dateMinusDaysSkippingHolidaysAndSundays(dispatch, calendaringOffset);
+  // 7. Calendaring: Green Belt (same day) or Green Belt − 1 day (random)
+  // Random: 0 or 1 day before green belt
+  const calendaringOffset = randomBetween(0, 1);
+  const calendaring =
+    calendaringOffset === 0
+      ? new Date(greenBelt) // Same day
+      : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1); // 1 day before
 
-  // 7. Compound Production: D − 26 to D − 13 (random in range)
-  const compoundOffset = randomBetween(13, 26);
-  const compound = dateMinusDaysSkippingHolidaysAndSundays(dispatch, compoundOffset);
+  // 8. Compound: Calendaring − 2 to Calendaring − 7 days (random in range)
+  const compoundOffset = randomBetween(2, 7);
+  const compound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, compoundOffset);
 
   return {
     dispatch_date: toISODateOnly(dispatch),
@@ -316,5 +318,35 @@ export function process_dates_from_dispatch(dispatchDateIso?: string) {
     green_belt_date: toISODateOnly(greenBelt),
     calendaring_date: toISODateOnly(calendaring),
     compound_date: toISODateOnly(compound),
+  };
+}
+
+/**
+ * Get separate compound dates ensuring one compound per day policy.
+ * Returns cover and skim compound dates that are on different working days.
+ * @param baseCompoundDate - Base compound date (ISO string)
+ * @returns Object with cover_compound_date and skim_compound_date (both ISO strings)
+ */
+export function getSeparateCompoundDates(baseCompoundDate?: string): {
+  cover_compound_date?: string;
+  skim_compound_date?: string;
+} {
+  if (!baseCompoundDate) return {};
+
+  const baseDate = new Date(baseCompoundDate);
+  const coverDate = new Date(baseDate);
+
+  // Get the previous working day for skim compound (ensuring different day)
+  const skimDate = new Date(baseDate);
+  skimDate.setDate(skimDate.getDate() - 1);
+
+  // Skip weekends and holidays to find the previous working day
+  while (isWeekendOrHoliday(skimDate)) {
+    skimDate.setDate(skimDate.getDate() - 1);
+  }
+
+  return {
+    cover_compound_date: toISODateOnly(coverDate),
+    skim_compound_date: toISODateOnly(skimDate),
   };
 }
