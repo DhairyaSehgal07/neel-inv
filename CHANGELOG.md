@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.8](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.6...v0.2.8) (2025-11-18)
+
+
+### Features
+
+* add belt code generation, MongoDB model, and CRUD API integration ([a115152](https://github.com/DhairyaSehgal07/neel-inv/commit/a11515217ab02871f5922c931212a0753b069bb8))
+
+
+### Code Refactoring
+
+* update compound date calculation and belt width input ([a1df017](https://github.com/DhairyaSehgal07/neel-inv/commit/a1df01722821535c59d7b01f4d42533647a8a5ea))
+
 ### [0.2.7](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.6...v0.2.7) (2025-11-18)
 
 
