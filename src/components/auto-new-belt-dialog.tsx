@@ -36,6 +36,7 @@ import {
   process_dates_from_dispatch,
   getSeparateCompoundDates,
 } from '@/lib/calculations';
+import { generateBeltCodes } from '@/lib/belt-code-utils';
 
 interface NewBeltDialogAutoProps {
   onAdd?: (belt: Belt) => void;
@@ -44,6 +45,7 @@ interface NewBeltDialogAutoProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  existingBelts?: Belt[];
 }
 
 /**
@@ -65,6 +67,7 @@ export default function NewBeltDialogAuto({
   trigger,
   open: controlledOpen,
   onOpenChange,
+  existingBelts = [],
 }: NewBeltDialogAutoProps) {
   const isEditMode = !!belt;
   const { register, handleSubmit, setValue, watch, reset } = useForm<Belt>({
@@ -99,6 +102,8 @@ export default function NewBeltDialogAuto({
   const entryDispatchDate = watch('process.dispatchDate');
   const calendaringDate = watch('process.calendaringDate');
   const breakerPly = watch('breakerPly');
+  const coverCompoundProducedOn = watch('compound.coverCompoundProducedOn');
+  const skimCompoundProducedOn = watch('compound.skimCompoundProducedOn');
 
   // populate form when editing or opening
   useEffect(() => {
@@ -228,6 +233,48 @@ export default function NewBeltDialogAuto({
     compoundSkimType,
     entryDispatchDate,
     calendaringDate,
+    setValue,
+  ]);
+
+  // Generate belt codes when dates and compound types are available
+  useEffect(() => {
+    // Only generate codes if we have at least one date and type combination
+    const hasCover = coverCompoundProducedOn && compoundCoverType;
+    const hasSkim = skimCompoundProducedOn && compoundSkimType;
+
+    if (hasCover || hasSkim) {
+      const codes = generateBeltCodes(
+        coverCompoundProducedOn,
+        compoundCoverType,
+        skimCompoundProducedOn,
+        compoundSkimType,
+        existingBelts,
+        belt?.id
+      );
+      if (codes.coverBeltCode) {
+        setValue('compound.coverBeltCode', codes.coverBeltCode);
+      } else if (hasCover) {
+        // Clear code if date/type was removed
+        setValue('compound.coverBeltCode', undefined);
+      }
+      if (codes.skimBeltCode) {
+        setValue('compound.skimBeltCode', codes.skimBeltCode);
+      } else if (hasSkim) {
+        // Clear code if date/type was removed
+        setValue('compound.skimBeltCode', undefined);
+      }
+    } else {
+      // Clear codes if no dates/types are available
+      setValue('compound.coverBeltCode', undefined);
+      setValue('compound.skimBeltCode', undefined);
+    }
+  }, [
+    coverCompoundProducedOn,
+    compoundCoverType,
+    skimCompoundProducedOn,
+    compoundSkimType,
+    existingBelts,
+    belt?.id,
     setValue,
   ]);
 
@@ -1083,6 +1130,52 @@ export default function NewBeltDialogAuto({
                     </p>
                   </div>
                 </div>
+
+                {/* Belt Codes Display */}
+                {(watch('compound.coverBeltCode') || watch('compound.skimBeltCode')) && (
+                  <div className="space-y-4 border-t pt-6">
+                    <h3 className="text-base font-semibold">Belt Codes (auto-generated)</h3>
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                      <p className="text-sm text-blue-900 font-medium">
+                        Unique belt codes generated from date and compound type
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {watch('compound.coverBeltCode') && (
+                          <div className="space-y-2">
+                            <Label htmlFor="coverBeltCode" className="text-sm font-medium">
+                              Cover Belt Code
+                            </Label>
+                            <Input
+                              id="coverBeltCode"
+                              value={watch('compound.coverBeltCode') || ''}
+                              readOnly
+                              className="h-10 font-mono bg-white"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Generated from: {coverCompoundProducedOn} + {compoundCoverType}
+                            </p>
+                          </div>
+                        )}
+                        {watch('compound.skimBeltCode') && (
+                          <div className="space-y-2">
+                            <Label htmlFor="skimBeltCode" className="text-sm font-medium">
+                              Skim Belt Code
+                            </Label>
+                            <Input
+                              id="skimBeltCode"
+                              value={watch('compound.skimBeltCode') || ''}
+                              readOnly
+                              className="h-10 font-mono bg-white"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Generated from: {skimCompoundProducedOn} + {compoundSkimType}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex flex-col sm:flex-row justify-between gap-3 pt-4 border-t">
                   <Button

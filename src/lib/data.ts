@@ -45,6 +45,8 @@ export interface CompoundInfo {
   skimCompoundProducedOn?: string;
   coverCompoundConsumed?: number;
   skimCompoundConsumed?: number;
+  coverBeltCode?: string;
+  skimBeltCode?: string;
 }
 
 export interface FabricInfo {

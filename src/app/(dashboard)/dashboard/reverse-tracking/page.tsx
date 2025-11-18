@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Belt } from '@/lib/data';
 import { Button } from '@/components/ui/button';
@@ -9,9 +9,15 @@ import { Badge } from '@/components/ui/badge';
 import NewBeltDialog from '@/components/new-belt-dialog';
 import NewBeltDialogAuto from '@/components/auto-new-belt-dialog';
 import { formatDate } from '@/lib/date-utils';
-import { Eye, Pencil } from 'lucide-react';
+import { Eye, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  fetchBelts,
+  createBelt,
+  updateBelt,
+  deleteBelt,
+} from '@/lib/api/belts';
 
 interface ReverseTrackingPageProps {
   initialBelts?: Belt[];
@@ -22,18 +28,112 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
   const [selectedBelt, setSelectedBelt] = useState<Belt | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [editingBelt, setEditingBelt] = useState<Belt | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingBeltId, setDeletingBeltId] = useState<string | null>(null);
 
-  const handleAddBelt = (belt: Belt) => {
-    setBelts([belt, ...belts]);
-    // TODO: Add API call to save belt to database
-    // await fetch('/api/belts', { method: 'POST', body: JSON.stringify(belt) });
+  // Fetch belts on component mount
+  useEffect(() => {
+    const loadBelts = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedBelts = await fetchBelts();
+        setBelts(fetchedBelts);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load belts';
+        setError(errorMessage);
+        console.error('Error loading belts:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Only fetch if initialBelts is empty (client-side fetch)
+    if (initialBelts.length === 0) {
+      loadBelts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleAddBelt = async (belt: Belt) => {
+    setError(null);
+    try {
+      // Optimistic update
+      setBelts([belt, ...belts]);
+
+      // API call
+      const { id, ...beltData } = belt;
+      const createdBelt = await createBelt(beltData);
+
+      // Update with server response
+      setBelts((prev) => prev.map((b) => (b.id === id ? createdBelt : b)));
+    } catch (err) {
+      // Revert optimistic update on error
+      setBelts((prev) => prev.filter((b) => b.id !== belt.id));
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create belt';
+      setError(errorMessage);
+      throw err; // Re-throw to let dialog handle it
+    }
   };
 
-  const handleUpdateBelt = (updatedBelt: Belt) => {
-    setBelts(belts.map((b) => (b.id === updatedBelt.id ? updatedBelt : b)));
-    setEditingBelt(null);
-    // TODO: Add API call to update belt in database
-    // await fetch(`/api/belts/${updatedBelt.id}`, { method: 'PUT', body: JSON.stringify(updatedBelt) });
+  const handleUpdateBelt = async (updatedBelt: Belt) => {
+    setError(null);
+    try {
+      // Optimistic update
+      setBelts((prev) => prev.map((b) => (b.id === updatedBelt.id ? updatedBelt : b)));
+
+      // API call
+      const { id, ...beltData } = updatedBelt;
+      const savedBelt = await updateBelt(id, beltData);
+
+      // Update with server response
+      setBelts((prev) => prev.map((b) => (b.id === id ? savedBelt : b)));
+      setEditingBelt(null);
+    } catch (err) {
+      // Revert optimistic update on error
+      const originalBelt = belts.find((b) => b.id === updatedBelt.id);
+      if (originalBelt) {
+        setBelts((prev) => prev.map((b) => (b.id === updatedBelt.id ? originalBelt : b)));
+      }
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update belt';
+      setError(errorMessage);
+      throw err; // Re-throw to let dialog handle it
+    }
+  };
+
+  const handleDeleteBelt = async (beltId: string) => {
+    if (!confirm('Are you sure you want to delete this belt? This action cannot be undone.')) {
+      return;
+    }
+
+    setError(null);
+    setDeletingBeltId(beltId);
+
+    // Store belt to delete for potential revert
+    const beltToDelete = belts.find((b) => b.id === beltId);
+
+    try {
+      // Optimistic update
+      setBelts((prev) => prev.filter((b) => b.id !== beltId));
+
+      // API call
+      await deleteBelt(beltId);
+    } catch (err) {
+      // Revert optimistic update on error
+      if (beltToDelete) {
+        setBelts((prev) => [...prev, beltToDelete].sort((a, b) => {
+          const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return dateB - dateA;
+        }));
+      }
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete belt';
+      setError(errorMessage);
+      alert(errorMessage);
+    } finally {
+      setDeletingBeltId(null);
+    }
   };
 
   const handleViewBelt = (belt: Belt) => {
@@ -161,6 +261,7 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
         header: 'Actions',
         cell: ({ row }) => {
           const belt = row.original;
+          const isDeleting = deletingBeltId === belt.id;
           return (
             <div className="flex gap-2 flex-wrap">
               <Button variant="ghost" size="sm" onClick={() => handleViewBelt(belt)}>
@@ -171,12 +272,27 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
                 <Pencil className="h-4 w-4 mr-1" />
                 Edit
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleDeleteBelt(belt.id)}
+                disabled={isDeleting}
+                className="text-destructive hover:text-destructive"
+              >
+                {isDeleting ? (
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 mr-1" />
+                )}
+                Delete
+              </Button>
             </div>
           );
         },
       },
     ],
-    []
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [deletingBeltId]
   );
 
   return (
@@ -191,18 +307,40 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
           </div>
           <div className="shrink-0 flex gap-2">
             <NewBeltDialog onAdd={handleAddBelt} />
-            <NewBeltDialogAuto onAdd={handleAddBelt} />
+            <NewBeltDialogAuto onAdd={handleAddBelt} existingBelts={belts} />
           </div>
         </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+            {error}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-2 h-auto p-0 text-destructive hover:text-destructive"
+              onClick={() => setError(null)}
+            >
+              ×
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="px-6 pb-6 flex-1 overflow-hidden flex flex-col">
-        <DataTable
-          columns={columns}
-          data={belts}
-          searchKey="beltNumber"
-          searchPlaceholder="Search by belt number..."
-        />
+        {isLoading && belts.length === 0 ? (
+          <div className="flex items-center justify-center h-64">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">Loading belts...</span>
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={belts}
+            searchKey="beltNumber"
+            searchPlaceholder="Search by belt number..."
+          />
+        )}
       </div>
 
       {/* Belt Detail Dialog */}
@@ -228,11 +366,15 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
       </Dialog>
 
       {/* Edit Belt Dialog */}
-      <NewBeltDialog
+      <NewBeltDialogAuto
         belt={editingBelt || undefined}
-        onUpdate={(updatedBelt) => {
-          handleUpdateBelt(updatedBelt);
-          setEditingBelt(null);
+        onUpdate={async (updatedBelt) => {
+          try {
+            await handleUpdateBelt(updatedBelt);
+            setEditingBelt(null);
+          } catch {
+            // Error already handled in handleUpdateBelt
+          }
         }}
         open={!!editingBelt}
         onOpenChange={(isOpen) => {
@@ -240,6 +382,7 @@ export default function ReverseTrackingPage({ initialBelts = [] }: ReverseTracki
             setEditingBelt(null);
           }
         }}
+        existingBelts={belts}
         trigger={<div style={{ display: 'none' }} />}
       />
     </div>
@@ -382,6 +525,18 @@ function BeltDetailView({ belt }: { belt: Belt }) {
               <div>
                 <p className="text-sm text-muted-foreground">Skim Compound Produced On</p>
                 <p className="font-medium">{formatDate(belt.compound.skimCompoundProducedOn)}</p>
+              </div>
+            )}
+            {belt.compound.coverBeltCode && (
+              <div>
+                <p className="text-sm text-muted-foreground">Cover Belt Code</p>
+                <p className="font-medium font-mono">{belt.compound.coverBeltCode}</p>
+              </div>
+            )}
+            {belt.compound.skimBeltCode && (
+              <div>
+                <p className="text-sm text-muted-foreground">Skim Belt Code</p>
+                <p className="font-medium font-mono">{belt.compound.skimBeltCode}</p>
               </div>
             )}
             {belt.compound.coverCompoundConsumed && (
