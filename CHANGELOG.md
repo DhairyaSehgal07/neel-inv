@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.11](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.10...v0.2.11) (2025-11-19)
+
+
+### Features
+
+* add multi-step belt form with production tracking and refactor compound types ([63cb510](https://github.com/DhairyaSehgal07/neel-inv/commit/63cb510605ed9dbb92e9f0170896c9abbd758921))
+
 ### [0.2.10](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.9...v0.2.10) (2025-11-19)
 
 
