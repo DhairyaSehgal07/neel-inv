@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.2.10](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.9...v0.2.10) (2025-11-19)
+
+
+### Features
+
+* add compound types management with filtering and CRUD operations ([2d571b8](https://github.com/DhairyaSehgal07/neel-inv/commit/2d571b8a20083ebb24e729e8fe531389498c2f02))
+
 ### [0.2.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.2.8...v0.2.9) (2025-11-18)
 
 
