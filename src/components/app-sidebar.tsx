@@ -2,15 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import {
-  Boxes,
-  PackageSearch,
-  ClipboardList,
-  Warehouse,
-  BarChart3,
-  Settings,
-  Users,
-} from 'lucide-react';
+import { PackageSearch, Settings, Layers, Package } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -24,47 +16,35 @@ import {
 } from '@/components/ui/sidebar';
 import Image from 'next/image';
 
-// 🔧 Navigation structure for Neelkanth Rubber Mills
+// 🎯 Only keep required items
 const navigationItems = [
   {
     name: 'Reverse Tracking',
     href: '/dashboard/reverse-tracking',
     icon: PackageSearch,
+    activePaths: ['/dashboard/reverse-tracking'],
   },
   {
-    name: 'Production Logs',
-    href: '/dashboard/production-logs',
-    icon: ClipboardList,
+    name: 'Belts',
+    href: '/dashboard/belts',
+    icon: Package,
+    activePaths: ['/dashboard/belts', '/dashboard/belts/create', '/dashboard/belts/edit'],
   },
   {
-    name: 'Inventory',
-    href: '/dashboard/inventory',
-    icon: Boxes,
-  },
-  {
-    name: 'Warehouse',
-    href: '/dashboard/warehouse',
-    icon: Warehouse,
-  },
-  {
-    name: 'Analytics',
-    href: '/dashboard/analytics',
-    icon: BarChart3,
-  },
-  {
-    name: 'Users',
-    href: '/dashboard/users',
-    icon: Users,
+    name: 'Compounds',
+    href: '/dashboard/compounds',
+    icon: Layers,
+    activePaths: ['/dashboard/compounds', '/dashboard/compounds/create'],
   },
   {
     name: 'Settings',
     href: '/dashboard/settings',
     icon: Settings,
     activePaths: [
-      '/factory/settings',
-      '/factory/settings/rbac',
-      '/factory/settings/profile',
-      '/factory/settings/preferences',
+      '/dashboard/settings',
+      '/dashboard/settings/compounds',
+      '/dashboard/settings/fabrics',
+      '/dashboard/settings/belts',
     ],
   },
 ];
@@ -86,9 +66,12 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => {
+                // 🚀 Correct multi-route active check
                 const isActive =
                   pathname === item.href ||
-                  item.activePaths?.some((path) => pathname.startsWith(path));
+                  (item.activePaths &&
+                    item.activePaths.some((route) => pathname.startsWith(route)));
+
                 const Icon = item.icon;
 
                 return (

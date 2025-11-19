@@ -5,34 +5,34 @@
 import { HOLIDAYS } from './data';
 
 export type CompoundKey =
-  | 'nk-1'
-  | 'nk-2'
-  | 'nk-3'
-  | 'nk-4'
-  | 'nk-5'
-  | 'nk-6'
-  | 'nk-7'
-  | 'nk-8'
-  | 'nk-9'
-  | 'nk-10'
-  | 'nk-11'
-  | 'nk-12'
-  | 'nk-13';
+  | 'Nk-1'
+  | 'Nk-2'
+  | 'Nk-3'
+  | 'Nk-4'
+  | 'Nk-5'
+  | 'Nk-6'
+  | 'Nk-7'
+  | 'Nk-8'
+  | 'Nk-9'
+  | 'Nk-10'
+  | 'Nk-11'
+  | 'Nk-12'
+  | 'Nk-13';
 
 export const DEFAULT_COMPOUND_SG: Record<CompoundKey, number> = {
-  'nk-1': 1.2,
-  'nk-2': 1.1,
-  'nk-3': 1.22,
-  'nk-4': 1.18,
-  'nk-5': 1.12,
-  'nk-6': 1.21,
-  'nk-7': 1.19,
-  'nk-8': 1.14,
-  'nk-9': 1.15,
-  'nk-10': 1.16,
-  'nk-11': 1.23,
-  'nk-12': 1.17,
-  'nk-13': 1.13,
+  'Nk-1': 1.2,
+  'Nk-2': 1.1,
+  'Nk-3': 1.22,
+  'Nk-4': 1.18,
+  'Nk-5': 1.12,
+  'Nk-6': 1.21,
+  'Nk-7': 1.19,
+  'Nk-8': 1.14,
+  'Nk-9': 1.15,
+  'Nk-10': 1.16,
+  'Nk-11': 1.23,
+  'Nk-12': 1.17,
+  'Nk-13': 1.13,
 };
 
 /**
@@ -75,7 +75,7 @@ function isHoliday(date: Date): boolean {
 /**
  * Check if a date is a weekend or holiday
  */
-function isWeekendOrHoliday(date: Date): boolean {
+export function isWeekendOrHoliday(date: Date): boolean {
   return isSunday(date) || isHoliday(date);
 }
 
@@ -157,7 +157,7 @@ export function cover_batches(coverWeightKg: number) {
 
 export function getSkimBatchSizeByCompound(compound?: CompoundKey) {
   if (!compound) return 90;
-  if (compound === 'nk-8' || compound === 'nk-9' || compound === 'nk-10') return 120;
+  if (compound === 'Nk-8' || compound === 'Nk-9' || compound === 'Nk-10') return 120;
   // for nk-2, nk-5 and others, default 90 (as mentioned)
   return 90;
 }
@@ -349,4 +349,196 @@ export function getSeparateCompoundDates(baseCompoundDate?: string): {
     cover_compound_date: toISODateOnly(coverDate),
     skim_compound_date: toISODateOnly(skimDate),
   };
+}
+
+/**
+ * Count working days (excluding Sundays and holidays) between two dates.
+ * Returns the number of working days in the gap between startDate and endDate.
+ * If endDate is after startDate, counts forward; if before, counts backward.
+ * The count excludes both start and end dates (counts the gap).
+ */
+export function countWorkingDays(startDate: Date, endDate: Date): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  // Normalize to start of day
+  start.setHours(0, 0, 0, 0);
+  end.setHours(0, 0, 0, 0);
+
+  if (start.getTime() === end.getTime()) return 0;
+
+  let count = 0;
+  const current = new Date(start);
+  const direction = end >= start ? 1 : -1;
+
+  // Move to the next/previous day first
+  current.setDate(current.getDate() + direction);
+
+  // Count working days until we reach the end date
+  while (current.getTime() !== end.getTime()) {
+    if (!isWeekendOrHoliday(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + direction);
+  }
+
+  return count;
+}
+
+/**
+ * Get the previous working day (skipping Sundays and holidays)
+ */
+export function getPreviousWorkingDay(date: Date): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() - 1);
+  while (isWeekendOrHoliday(result)) {
+    result.setDate(result.getDate() - 1);
+  }
+  return result;
+}
+
+/**
+ * Get the next working day (skipping Sundays and holidays)
+ */
+export function getNextWorkingDay(date: Date): Date {
+  const result = new Date(date);
+  result.setDate(result.getDate() + 1);
+  while (isWeekendOrHoliday(result)) {
+    result.setDate(result.getDate() + 1);
+  }
+  return result;
+}
+
+/**
+ * Validate date relationships according to the calculation rules.
+ * Returns an object with validation errors for each date field.
+ */
+export function validateDateRelationships(dates: {
+  dispatchDate?: Date | string;
+  packagingDate?: Date | string;
+  pdiDate?: Date | string;
+  inspectionDate?: Date | string;
+  curingDate?: Date | string;
+  greenBeltDate?: Date | string;
+  calendaringDate?: Date | string;
+  coverCompoundProducedOn?: Date | string;
+  skimCompoundProducedOn?: Date | string;
+}): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  const toDate = (d: Date | string | undefined): Date | null => {
+    if (!d) return null;
+    return d instanceof Date ? d : new Date(d);
+  };
+
+  const dispatch = toDate(dates.dispatchDate);
+  const packaging = toDate(dates.packagingDate);
+  const pdi = toDate(dates.pdiDate);
+  const inspection = toDate(dates.inspectionDate);
+  const curing = toDate(dates.curingDate);
+  const greenBelt = toDate(dates.greenBeltDate);
+  const calendaring = toDate(dates.calendaringDate);
+  const coverCompound = toDate(dates.coverCompoundProducedOn);
+  const skimCompound = toDate(dates.skimCompoundProducedOn);
+
+  if (!dispatch) return errors;
+
+  // Validate Packaging: must be exactly 1 working day before dispatch
+  if (packaging) {
+    if (isWeekendOrHoliday(packaging)) {
+      errors.packagingDate = 'Packaging date must be a working day';
+    } else if (dispatch) {
+      const days = countWorkingDays(packaging, dispatch);
+      if (days !== 1) {
+        errors.packagingDate = 'Packaging must be exactly 1 working day before dispatch';
+      }
+    }
+  }
+
+  // Validate PDI: must be 4-5 working days before dispatch
+  if (pdi) {
+    if (isWeekendOrHoliday(pdi)) {
+      errors.pdiDate = 'PDI date must be a working day';
+    } else if (dispatch) {
+      const days = countWorkingDays(pdi, dispatch);
+      if (days < 4 || days > 5) {
+        errors.pdiDate = 'PDI must be 4-5 working days before dispatch';
+      }
+    }
+  }
+
+  // Validate Internal Inspection: must be 4-10 working days before PDI
+  if (inspection && pdi) {
+    if (isWeekendOrHoliday(inspection)) {
+      errors.inspectionDate = 'Inspection date must be a working day';
+    } else {
+      const days = countWorkingDays(inspection, pdi);
+      if (days < 4 || days > 10) {
+        errors.inspectionDate = 'Inspection must be 4-10 working days before PDI';
+      }
+    }
+  }
+
+  // Validate Curing: must be exactly 2 working days before inspection
+  if (curing && inspection) {
+    if (isWeekendOrHoliday(curing)) {
+      errors.curingDate = 'Curing date must be a working day';
+    } else {
+      const days = countWorkingDays(curing, inspection);
+      if (days !== 2) {
+        errors.curingDate = 'Curing must be exactly 2 working days before inspection';
+      }
+    }
+  }
+
+  // Validate Green Belt: must be exactly 1 working day before curing
+  if (greenBelt && curing) {
+    if (isWeekendOrHoliday(greenBelt)) {
+      errors.greenBeltDate = 'Green Belt date must be a working day';
+    } else {
+      const days = countWorkingDays(greenBelt, curing);
+      if (days !== 1) {
+        errors.greenBeltDate = 'Green Belt must be exactly 1 working day before curing';
+      }
+    }
+  }
+
+  // Validate Calendaring: must be same day or 1 working day before green belt
+  if (calendaring && greenBelt) {
+    if (isWeekendOrHoliday(calendaring)) {
+      errors.calendaringDate = 'Calendaring date must be a working day';
+    } else {
+      const days = countWorkingDays(calendaring, greenBelt);
+      // Same day means 0 working days gap, or 1 working day before
+      if (days < 0 || days > 1) {
+        errors.calendaringDate = 'Calendaring must be same day or 1 working day before green belt';
+      }
+    }
+  }
+
+  // Validate Compound dates: cover and skim must be 2-7 working days before calendaring
+  if (coverCompound && calendaring) {
+    if (isWeekendOrHoliday(coverCompound)) {
+      errors.coverCompoundProducedOn = 'Cover compound date must be a working day';
+    } else {
+      const days = countWorkingDays(coverCompound, calendaring);
+      if (days < 2 || days > 7) {
+        errors.coverCompoundProducedOn = 'Cover compound must be 2-7 working days before calendaring';
+      }
+    }
+  }
+
+  if (skimCompound && coverCompound) {
+    if (isWeekendOrHoliday(skimCompound)) {
+      errors.skimCompoundProducedOn = 'Skim compound date must be a working day';
+    } else {
+      // Skim should be 1 working day before cover compound
+      const days = countWorkingDays(skimCompound, coverCompound);
+      if (days !== 1) {
+        errors.skimCompoundProducedOn = 'Skim compound must be 1 working day before cover compound';
+      }
+    }
+  }
+
+  return errors;
 }

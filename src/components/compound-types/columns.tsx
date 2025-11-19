@@ -5,7 +5,7 @@
 import { ColumnDef } from '@tanstack/react-table';
 import { CompoundType } from '@/lib/api/compound-type';
 import { Badge } from '@/components/ui/badge';
-import { DataTableRowActions } from '@/components/compount-types/row-actions';
+import { DataTableRowActions } from './row-actions';
 
 export const columns: ColumnDef<CompoundType>[] = [
   {

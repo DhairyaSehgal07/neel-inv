@@ -1,0 +1,40 @@
+export interface BeltFormData {
+  beltNumber: string;
+  rating: string;
+  fabricType: string;
+  topCover?: number | string;
+  bottomCover?: number | string;
+  beltLength?: number | string;
+  beltWidth?: number | string;
+  edge: string;
+  carcass?: number | string;
+  coverGrade: string;
+  breakerPly: boolean;
+  orderNumber: string;
+  buyerName: string;
+  orderDate?: Date;
+  deliveryDeadline?: Date;
+  status: string;
+  fabricSupplier: string;
+  rollNumber: string;
+  numberOfPlies?: number;
+  fabricConsumed?: number | string;
+  coverCompoundType: string;
+  skimCompoundType: string;
+  coverCompoundConsumed?: number | string;
+  skimCompoundConsumed?: number | string;
+  dispatchDate?: Date;
+  packagingDate?: Date;
+  pdiDate?: Date;
+  inspectionDate?: Date;
+  inspectionStation: string;
+  curingDate?: Date;
+  pressStation: string;
+  greenBeltDate?: Date;
+  greenBeltStation: string;
+  calendaringDate?: Date;
+  calendaringStation: string;
+  coverCompoundProducedOn?: Date;
+  skimCompoundProducedOn?: Date;
+}
+

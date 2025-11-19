@@ -27,12 +27,7 @@ interface SpecificationsStepProps {
   onNext: () => void;
 }
 
-export function SpecificationsStep({
-  register,
-  watch,
-  setValue,
-  onNext,
-}: SpecificationsStepProps) {
+export function SpecificationsStep({ register, watch, setValue, onNext }: SpecificationsStepProps) {
   const rating = watch('rating');
   const beltWidthMm = watch('beltWidthMm');
   const breakerPly = watch('breakerPly');
@@ -266,9 +261,7 @@ export function SpecificationsStep({
               </Label>
               <DatePicker
                 id="orderDate"
-                date={
-                  watch('orderDate') ? parseDateString(watch('orderDate')!) : undefined
-                }
+                date={watch('orderDate') ? parseDateString(watch('orderDate')!) : undefined}
                 onDateChange={(date) =>
                   setValue('orderDate', date ? formatDateString(date) : undefined)
                 }
