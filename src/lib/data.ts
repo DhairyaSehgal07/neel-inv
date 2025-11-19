@@ -15,6 +15,8 @@ export type CompoundType =
   | 'SKIM_N'
   | 'SKIM_L';
 
+  export type CoverCompoundType = 'Nk-1' | 'Nk-2' | 'Nk-3' | 'Nk-4' | 'Nk-5' | 'Nk-6' | 'Nk-7' | 'Nk-8' | 'Nk-9' | 'Nk-10' | 'Nk-11' | 'Nk-12' | 'Nk-13';
+
 export type EdgeType = 'Cut' | 'Moulded';
 export type BeltStatus = 'Dispatched' | 'In Production';
 export type EntryType = 'Manual' | 'Auto';

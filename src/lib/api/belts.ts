@@ -1,49 +1,8 @@
 // src/lib/api/belts.ts
-import axios from 'axios';
+import { apiClient, ApiResponseData } from './client';
 import { Belt } from '@/lib/data';
 
 const API_BASE_URL = '/api/belts';
-
-interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-  count?: number;
-}
-
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: '',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Request interceptor (can add auth tokens here if needed)
-apiClient.interceptors.request.use(
-  (config) => {
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Handle network errors
-    if (!error.response) {
-      throw new Error('Network error. Please check your connection.');
-    }
-
-    // Handle API errors
-    const message = error.response?.data?.message || error.message || 'An error occurred';
-    throw new Error(message);
-  }
-);
 
 /**
  * Fetch all belts with optional filters
@@ -53,7 +12,7 @@ export async function fetchBelts(params?: {
   search?: string;
 }): Promise<Belt[]> {
   try {
-    const response = await apiClient.get<ApiResponse<Belt[]>>(API_BASE_URL, {
+    const response = await apiClient.get<ApiResponseData<Belt[]>>(API_BASE_URL, {
       params,
     });
 
@@ -72,7 +31,7 @@ export async function fetchBelts(params?: {
  */
 export async function fetchBeltById(id: string): Promise<Belt> {
   try {
-    const response = await apiClient.get<ApiResponse<Belt>>(`${API_BASE_URL}/${id}`);
+    const response = await apiClient.get<ApiResponseData<Belt>>(`${API_BASE_URL}/${id}`);
 
     if (response.data.success && response.data.data) {
       return response.data.data;
@@ -89,7 +48,7 @@ export async function fetchBeltById(id: string): Promise<Belt> {
  */
 export async function createBelt(belt: Omit<Belt, 'id' | 'createdAt'>): Promise<Belt> {
   try {
-    const response = await apiClient.post<ApiResponse<Belt>>(API_BASE_URL, belt);
+    const response = await apiClient.post<ApiResponseData<Belt>>(API_BASE_URL, belt);
 
     if (response.data.success && response.data.data) {
       return response.data.data;
@@ -106,7 +65,7 @@ export async function createBelt(belt: Omit<Belt, 'id' | 'createdAt'>): Promise<
  */
 export async function updateBelt(id: string, belt: Partial<Belt>): Promise<Belt> {
   try {
-    const response = await apiClient.put<ApiResponse<Belt>>(`${API_BASE_URL}/${id}`, belt);
+    const response = await apiClient.put<ApiResponseData<Belt>>(`${API_BASE_URL}/${id}`, belt);
 
     if (response.data.success && response.data.data) {
       return response.data.data;
@@ -123,7 +82,7 @@ export async function updateBelt(id: string, belt: Partial<Belt>): Promise<Belt>
  */
 export async function deleteBelt(id: string): Promise<void> {
   try {
-    const response = await apiClient.delete<ApiResponse<void>>(`${API_BASE_URL}/${id}`);
+    const response = await apiClient.delete<ApiResponseData<void>>(`${API_BASE_URL}/${id}`);
 
     if (!response.data.success) {
       throw new Error(response.data.message || 'Failed to delete belt');

@@ -54,6 +54,7 @@ export const { auth, handlers } = NextAuth({
             name: user.name,
             mobileNumber: user.mobileNumber,
             role: user.role,
+            permissions: user.permissions || [],
             isActive: user.isActive,
           } as User;
         } catch (err) {
@@ -72,6 +73,7 @@ export const { auth, handlers } = NextAuth({
         token.mobileNumber = user.mobileNumber;
         token.name = user.name;
         token.role = user.role;
+        token.permissions = user.permissions || [];
         token.isActive = user.isActive;
       }
       return token;
@@ -83,6 +85,7 @@ export const { auth, handlers } = NextAuth({
           mobileNumber: token.mobileNumber,
           name: token.name,
           role: token.role,
+          permissions: token.permissions || [],
           isActive: token.isActive,
         };
       }

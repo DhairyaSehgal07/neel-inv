@@ -3,9 +3,11 @@ import dbConnect from "@/lib/dbConnect";
 import BeltModel from "@/model/Belt";
 import mongoose from "mongoose";
 import { convertBeltDocumentToBelt } from "@/lib/belt-utils";
+import { withRBACParams } from "@/lib/rbac-params";
+import { Permission } from "@/lib/permissions";
 
 // GET /api/belts/[id] - Get single belt by ID
-export async function GET(
+async function getBelt(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
@@ -64,7 +66,7 @@ export async function GET(
 }
 
 // PUT /api/belts/[id] - Update belt by ID
-export async function PUT(
+async function updateBelt(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
@@ -212,7 +214,7 @@ export async function PUT(
 }
 
 // DELETE /api/belts/[id] - Delete belt by ID
-export async function DELETE(
+async function deleteBelt(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
@@ -270,3 +272,19 @@ export async function DELETE(
     );
   }
 }
+
+// Export with RBAC middleware
+export const GET = (
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) => withRBACParams(request, context.params, Permission.BELT_VIEW, getBelt);
+
+export const PUT = (
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) => withRBACParams(request, context.params, Permission.BELT_UPDATE, updateBelt);
+
+export const DELETE = (
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) => withRBACParams(request, context.params, Permission.BELT_DELETE, deleteBelt);

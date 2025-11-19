@@ -53,8 +53,6 @@ export function DatePicker({
           selected={date}
           onSelect={onDateChange}
           initialFocus
-          captionLayout="dropdown"
-          defaultMonth={date}
         />
       </PopoverContent>
     </Popover>

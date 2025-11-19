@@ -11,7 +11,7 @@ export default function Home() {
         {/* Logo Section */}
         <div className="flex flex-col items-center space-y-3">
           <Image
-            src="https://github.com/evilrabbit.png"
+            src="/neelkanth.svg"
             alt="Neelkanth Rubber Mills Logo"
             width={80}
             height={80}

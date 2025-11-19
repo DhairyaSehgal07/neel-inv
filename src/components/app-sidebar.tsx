@@ -76,13 +76,7 @@ const AppSidebar = () => {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-2">
-          <Image
-            src="https://github.com/evilrabbit.png"
-            alt="Neelkanth Rubber Mills Logo"
-            width={40}
-            height={40}
-            className="rounded-full"
-          />
+          <Image src="/neelkanth.webp" alt="Neelkanth Rubber Mills Logo" width={120} height={120} />
         </div>
       </SidebarHeader>
 

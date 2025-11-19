@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { Permission, ALL_PERMISSIONS } from "@/lib/permissions";
 
 export type Role = "Admin" | "Manager" | "Supervisor" | "Worker";
 
@@ -7,6 +8,7 @@ export interface User extends Document {
   mobileNumber: string;
   password: string;
   role: Role;
+  permissions: Permission[]; // Array of permissions assigned by Admin
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +38,11 @@ const UserSchema: Schema<User> = new Schema(
       type: String,
       enum: ["Admin", "Manager", "Supervisor", "Worker"],
       default: "Worker",
+    },
+    permissions: {
+      type: [String],
+      enum: ALL_PERMISSIONS,
+      default: [],
     },
     isActive: {
       type: Boolean,
