@@ -9,6 +9,59 @@ import Belt from '@/model/Belt';
 import { BeltFormData } from '@/types/belt';
 import { createBelt } from '@/lib/services/belt-service';
 
+
+async function getBelts(request: NextRequest) {
+  try {
+    await dbConnect();
+
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get('status');
+    const search = searchParams.get('search');
+
+    // Build query
+    const query: {
+      status?: string;
+      $or?: Array<{ [key: string]: { $regex: string; $options: string } }>;
+    } = {};
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (search) {
+      query.$or = [
+        { beltNumber: { $regex: search, $options: 'i' } },
+        { 'fabric.rating': { $regex: search, $options: 'i' } },
+        { orderNumber: { $regex: search, $options: 'i' } },
+        { buyerName: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const belts = await Belt.find(query).sort({ createdAt: -1 });
+    // const convertedBelts = convertBeltDocumentsToBelts(belts);
+
+    return NextResponse.json(
+      {
+        success: true,
+        data: belts,
+        count: belts.length,
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error('Error fetching belts:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch belts';
+    return NextResponse.json(
+      {
+        success: false,
+        message: 'Failed to fetch belts',
+        error: errorMessage,
+      },
+      { status: 500 }
+    );
+  }
+}
+
 export async function createBeltHandler(req: Request) {
   let session: mongoose.ClientSession | undefined;
   try {
@@ -147,5 +200,6 @@ export async function createBeltHandler(req: Request) {
   }
 }
 
+export const GET = (request: NextRequest) => withRBAC(request, Permission.BELT_VIEW, getBelts);
 export const POST = (request: NextRequest) =>
   withRBAC(request, Permission.BELT_CREATE, createBeltHandler);

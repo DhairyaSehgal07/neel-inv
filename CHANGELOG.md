@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.3...v0.1.4) (2025-11-20)
+
+
+### Features
+
+* add compound batches API route with RBAC protection
+* add compound batches table component with search and filtering
+* add belts table component with essential columns and detailed view dialog
+* add useBeltsQuery hook for fetching belts with React Query
+* add useCompoundBatchesQuery hook for fetching compound batches
+* add server-side fetch functions for compound batches
+* add belt details dialog showing all belt information in organized sections
+
+### Bug Fixes
+
+* fix compound batches API route file naming (routes.ts -> route.ts) to resolve 404 errors
+
 ### [0.1.3](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.2...v0.1.3) (2025-11-20)
 
 
