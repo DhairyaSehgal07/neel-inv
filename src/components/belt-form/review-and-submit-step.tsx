@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -8,7 +7,7 @@ import { toast } from 'sonner';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
 import { format } from 'date-fns';
-// import { createBelt } from '@/lib/api/belts';
+import { useCreateBeltMutation } from '@/services/api/queries/belts/clientBelts';
 
 interface ReviewAndSubmitStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -31,74 +30,70 @@ const formatValue = (value: unknown): string => {
 
 export const ReviewAndSubmitStep = ({ form, onBack, onSuccess }: ReviewAndSubmitStepProps) => {
   const { getValues } = form;
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const createBeltMutation = useCreateBeltMutation();
 
   const formData = getValues();
 
   const handleSubmit = async () => {
-    try {
-      setIsSubmitting(true);
-
-      // Validate required fields
-      if (!formData.beltNumber) {
-        toast.error('Belt number is required');
-        return;
-      }
-
-      if (!formData.coverCompoundType) {
-        toast.error('Cover compound type is required');
-        return;
-      }
-
-      if (!formData.skimCompoundType) {
-        toast.error('Skim compound type is required');
-        return;
-      }
-
-      const coverConsumed =
-        typeof formData.coverCompoundConsumed === 'number'
-          ? formData.coverCompoundConsumed
-          : typeof formData.coverCompoundConsumed === 'string'
-            ? parseFloat(formData.coverCompoundConsumed)
-            : 0;
-
-      const skimConsumed =
-        typeof formData.skimCompoundConsumed === 'number'
-          ? formData.skimCompoundConsumed
-          : typeof formData.skimCompoundConsumed === 'string'
-            ? parseFloat(formData.skimCompoundConsumed)
-            : 0;
-
-      if (coverConsumed <= 0) {
-        toast.error('Cover compound consumed must be greater than 0');
-        return;
-      }
-
-      if (skimConsumed <= 0) {
-        toast.error('Skim compound consumed must be greater than 0');
-        return;
-      }
-
-      // Prepare payload for API
-      const payload = {
-        formData,
-        coverConsumedKg: coverConsumed,
-        skimConsumedKg: skimConsumed,
-      };
-
-
-      // Call API
-    //   await createBelt(payload);
-
-      toast.success('Belt created successfully!');
-      onSuccess();
-    } catch (error) {
-      console.error('Error creating belt:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create belt';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
+    // Validate required fields
+    if (!formData.beltNumber) {
+      toast.error('Belt number is required');
+      return;
     }
+
+    if (!formData.coverCompoundType) {
+      toast.error('Cover compound type is required');
+      return;
+    }
+
+    if (!formData.skimCompoundType) {
+      toast.error('Skim compound type is required');
+      return;
+    }
+
+    const coverConsumed =
+      typeof formData.coverCompoundConsumed === 'number'
+        ? formData.coverCompoundConsumed
+        : typeof formData.coverCompoundConsumed === 'string'
+          ? parseFloat(formData.coverCompoundConsumed)
+          : 0;
+
+    const skimConsumed =
+      typeof formData.skimCompoundConsumed === 'number'
+        ? formData.skimCompoundConsumed
+        : typeof formData.skimCompoundConsumed === 'string'
+          ? parseFloat(formData.skimCompoundConsumed)
+          : 0;
+
+    if (coverConsumed <= 0) {
+      toast.error('Cover compound consumed must be greater than 0');
+      return;
+    }
+
+    if (skimConsumed <= 0) {
+      toast.error('Skim compound consumed must be greater than 0');
+      return;
+    }
+
+    // Prepare payload for API
+    const payload = {
+      formData,
+      coverConsumedKg: coverConsumed,
+      skimConsumedKg: skimConsumed,
+    };
+
+    // Call API using mutation
+    createBeltMutation.mutate(payload, {
+      onSuccess: () => {
+        toast.success('Belt created successfully!');
+        onSuccess();
+      },
+      onError: (error) => {
+        console.error('Error creating belt:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to create belt';
+        toast.error(errorMessage);
+      },
+    });
   };
 
   return (
@@ -320,10 +315,10 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess }: ReviewAndSubmit
           type="button"
           size="sm"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={createBeltMutation.isPending}
           className="min-w-[100px]"
         >
-          {isSubmitting ? 'Submitting...' : 'Submit'}
+          {createBeltMutation.isPending ? 'Submitting...' : 'Submit'}
         </Button>
       </div>
     </div>
