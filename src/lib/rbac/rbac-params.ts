@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { Permission } from "./permissions";
 import { Role } from "@/model/User";
-import { hasAnyPermission } from "./rbac";
+import { hasAnyPermission } from ".";
 
 /**
  * RBAC Middleware for API routes with dynamic params
