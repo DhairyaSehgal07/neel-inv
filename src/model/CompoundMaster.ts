@@ -11,7 +11,7 @@ export interface CompoundMasterDoc extends Document {
 
 const CompoundMasterSchema = new Schema<CompoundMasterDoc>(
   {
-    compoundCode: { type: String, required: true, unique: true, index: true },
+    compoundCode: { type: String, required: true, unique: true },
     compoundName: { type: String, required: true },
     category: { type: String, required: true, enum: ['cover', 'skim'] },
     defaultWeightPerBatch: { type: Number, required: true },

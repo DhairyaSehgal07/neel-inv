@@ -39,7 +39,6 @@ export interface BeltFormData {
   skimCompoundProducedOn?: Date;
 }
 
-
 export type FabricType = 'EP' | 'NN' | 'EE' | 'Other';
 export type CompoundType =
   | 'Nylon'
@@ -113,6 +112,10 @@ export interface FabricInfo {
   consumedMeters?: number;
 }
 
+export interface BatchUsage {
+  batchId: string;
+  consumedKg: number;
+}
 
 export interface Belt {
   id: string;
@@ -138,4 +141,6 @@ export interface Belt {
   status: BeltStatus;
   entryType?: EntryType;
   createdAt?: string;
+  coverBatchesUsed?: BatchUsage[];
+  skimBatchesUsed?: BatchUsage[];
 }

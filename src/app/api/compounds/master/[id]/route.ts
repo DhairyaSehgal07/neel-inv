@@ -219,14 +219,14 @@ async function deleteCompoundMaster(
 export const GET = (
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
-) => withRBACParams(request, context.params, Permission.COMPOUND_TYPE_VIEW, getCompoundMaster);
+) => withRBACParams(request, context.params, Permission.COMPOUND_MASTER_VIEW, getCompoundMaster);
 
 export const PUT = (
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
-) => withRBACParams(request, context.params, Permission.COMPOUND_TYPE_UPDATE, updateCompoundMaster);
+) => withRBACParams(request, context.params, Permission.COMPOUND_MASTER_UPDATE, updateCompoundMaster);
 
 export const DELETE = (
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
-) => withRBACParams(request, context.params, Permission.COMPOUND_TYPE_DELETE, deleteCompoundMaster);
+) => withRBACParams(request, context.params, Permission.COMPOUND_MASTER_DELETE, deleteCompoundMaster);

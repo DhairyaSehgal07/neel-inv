@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -16,18 +11,20 @@ interface BeltDetailsDialogProps {
   belt: BeltDoc;
 }
 
-const DetailRow = ({ label, value }: { label: string; value: string | number | React.ReactNode }) => (
+const DetailRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number | React.ReactNode;
+}) => (
   <div className="grid grid-cols-2 gap-4 py-2">
     <div className="font-medium text-muted-foreground">{label}:</div>
     <div>{value}</div>
   </div>
 );
 
-export default function BeltDetailsDialog({
-  open,
-  onOpenChange,
-  belt,
-}: BeltDetailsDialogProps) {
+export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDetailsDialogProps) {
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     try {
@@ -62,16 +59,11 @@ export default function BeltDetailsDialog({
               />
               <DetailRow
                 label="Entry Type"
-                value={
-                  <Badge variant="outline">{belt.entryType}</Badge>
-                }
+                value={<Badge variant="outline">{belt.entryType}</Badge>}
               />
               <DetailRow label="Edge" value={belt.edge || '-'} />
               <DetailRow label="Cover Grade" value={belt.coverGrade || '-'} />
-              <DetailRow
-                label="Breaker Ply"
-                value={belt.breakerPly ? 'Yes' : 'No'}
-              />
+              <DetailRow label="Breaker Ply" value={belt.breakerPly ? 'Yes' : 'No'} />
               {belt.breakerPly && belt.breakerPlyRemarks && (
                 <DetailRow label="Breaker Ply Remarks" value={belt.breakerPlyRemarks} />
               )}
@@ -84,14 +76,8 @@ export default function BeltDetailsDialog({
           <div>
             <h3 className="text-lg font-semibold mb-4">Belt Specifications</h3>
             <div className="space-y-1">
-              <DetailRow
-                label="Length"
-                value={belt.beltLengthM ? `${belt.beltLengthM} m` : '-'}
-              />
-              <DetailRow
-                label="Width"
-                value={belt.beltWidthMm ? `${belt.beltWidthMm} mm` : '-'}
-              />
+              <DetailRow label="Length" value={belt.beltLengthM ? `${belt.beltLengthM} m` : '-'} />
+              <DetailRow label="Width" value={belt.beltWidthMm ? `${belt.beltWidthMm} mm` : '-'} />
               <DetailRow
                 label="Top Cover"
                 value={belt.topCoverMm ? `${belt.topCoverMm} mm` : '-'}
@@ -100,10 +86,7 @@ export default function BeltDetailsDialog({
                 label="Bottom Cover"
                 value={belt.bottomCoverMm ? `${belt.bottomCoverMm} mm` : '-'}
               />
-              <DetailRow
-                label="Carcass"
-                value={belt.carcassMm ? `${belt.carcassMm} mm` : '-'}
-              />
+              <DetailRow label="Carcass" value={belt.carcassMm ? `${belt.carcassMm} mm` : '-'} />
             </div>
           </div>
 
@@ -116,10 +99,7 @@ export default function BeltDetailsDialog({
               <DetailRow label="Order Number" value={belt.orderNumber || '-'} />
               <DetailRow label="Buyer Name" value={belt.buyerName || '-'} />
               <DetailRow label="Order Date" value={formatDate(belt.orderDate)} />
-              <DetailRow
-                label="Delivery Deadline"
-                value={formatDate(belt.deliveryDeadline)}
-              />
+              <DetailRow label="Delivery Deadline" value={formatDate(belt.deliveryDeadline)} />
             </div>
           </div>
 
@@ -214,7 +194,8 @@ export default function BeltDetailsDialog({
           )}
 
           {/* Compound Batches Used */}
-          {(belt.coverBatchesUsed?.length > 0 || belt.skimBatchesUsed?.length > 0) && (
+          {((belt.coverBatchesUsed && belt.coverBatchesUsed.length > 0) ||
+            (belt.skimBatchesUsed && belt.skimBatchesUsed.length > 0)) && (
             <>
               <div>
                 <h3 className="text-lg font-semibold mb-4">Compound Batches Used</h3>
@@ -223,10 +204,7 @@ export default function BeltDetailsDialog({
                     <h4 className="font-medium mb-2">Cover Batches:</h4>
                     <div className="space-y-2">
                       {belt.coverBatchesUsed.map((batch, index) => (
-                        <div
-                          key={index}
-                          className="p-2 bg-muted rounded-md text-sm"
-                        >
+                        <div key={index} className="p-2 bg-muted rounded-md text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <span className="text-muted-foreground">Batch ID:</span>
                             <span>{batch.batchId.toString()}</span>
@@ -243,10 +221,7 @@ export default function BeltDetailsDialog({
                     <h4 className="font-medium mb-2">Skim Batches:</h4>
                     <div className="space-y-2">
                       {belt.skimBatchesUsed.map((batch, index) => (
-                        <div
-                          key={index}
-                          className="p-2 bg-muted rounded-md text-sm"
-                        >
+                        <div key={index} className="p-2 bg-muted rounded-md text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <span className="text-muted-foreground">Batch ID:</span>
                             <span>{batch.batchId.toString()}</span>
@@ -270,12 +245,7 @@ export default function BeltDetailsDialog({
             <div className="space-y-1">
               <DetailRow label="Created At" value={formatDate(belt.createdAt?.toString())} />
               <DetailRow label="Updated At" value={formatDate(belt.updatedAt?.toString())} />
-              {belt.fabricId && (
-                <DetailRow
-                  label="Fabric ID"
-                  value={belt.fabricId.toString()}
-                />
-              )}
+              {belt.fabricId && <DetailRow label="Fabric ID" value={belt.fabricId.toString()} />}
             </div>
           </div>
         </div>
