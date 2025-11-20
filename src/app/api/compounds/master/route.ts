@@ -110,7 +110,7 @@ async function createCompoundMaster(request: NextRequest) {
 
 // Export with RBAC middleware
 export const GET = (request: NextRequest) =>
-  withRBAC(request, Permission.COMPOUND_TYPE_VIEW, getCompoundMasters);
+  withRBAC(request, Permission.COMPOUND_MASTER_VIEW, getCompoundMasters);
 
 export const POST = (request: NextRequest) =>
-  withRBAC(request, Permission.COMPOUND_TYPE_CREATE, createCompoundMaster);
+  withRBAC(request, Permission.COMPOUND_MASTER_CREATE, createCompoundMaster);

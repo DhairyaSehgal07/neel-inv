@@ -25,11 +25,11 @@ export enum Permission {
   REPORTS_VIEW = "reports:view",
   REPORTS_EXPORT = "reports:export",
 
-  // Compound type permissions
-  COMPOUND_TYPE_VIEW = "compound_type:view",
-  COMPOUND_TYPE_CREATE = "compound_type:create",
-  COMPOUND_TYPE_UPDATE = "compound_type:update",
-  COMPOUND_TYPE_DELETE = "compound_type:delete",
+  // Compound master permissions
+  COMPOUND_MASTER_VIEW = "compound_master:view",
+  COMPOUND_MASTER_CREATE = "compound_master:create",
+  COMPOUND_MASTER_UPDATE = "compound_master:update",
+  COMPOUND_MASTER_DELETE = "compound_master:delete",
 }
 
 /**
@@ -58,10 +58,10 @@ export const PermissionGroups = {
     Permission.REPORTS_EXPORT,
   ],
   COMPOUND_TYPE: [
-    Permission.COMPOUND_TYPE_VIEW,
-    Permission.COMPOUND_TYPE_CREATE,
-    Permission.COMPOUND_TYPE_UPDATE,
-    Permission.COMPOUND_TYPE_DELETE,
+    Permission.COMPOUND_MASTER_VIEW,
+    Permission.COMPOUND_MASTER_CREATE,
+    Permission.COMPOUND_MASTER_UPDATE,
+    Permission.COMPOUND_MASTER_DELETE,
   ],
 } as const;
 
