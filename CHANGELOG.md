@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.5](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.4...v0.1.5) (2025-11-21)
+
+
+### Bug Fixes
+
+* fabric consumed field not being set during belt creation ([98ae613](https://github.com/DhairyaSehgal07/neel-inv/commit/98ae613526db97679f3610421290a06de8dbcb94))
+
+
+### Miscellaneous Chores
+
+* bug fix ([28d0634](https://github.com/DhairyaSehgal07/neel-inv/commit/28d06347db8aa5c8a31fa1e44a4f9968fb7a8afa))
+
 ### [0.1.4](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.3...v0.1.4) (2025-11-20)
 
 
