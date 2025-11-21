@@ -221,7 +221,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                                 ? batch.batchId
                                 : batch.batchId.toString()}
                             </span>
-                            {batch.compoundCode && (
+                            {batch.compoundCode !== undefined && (
                               <>
                                 <span className="text-muted-foreground">Compound Code:</span>
                                 <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>
@@ -254,7 +254,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                                 ? batch.batchId
                                 : batch.batchId.toString()}
                             </span>
-                            {batch.compoundCode && (
+                            {batch.compoundCode !== undefined && (
                               <>
                                 <span className="text-muted-foreground">Compound Code:</span>
                                 <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>

@@ -3,6 +3,8 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface BatchUsage {
   batchId: mongoose.Types.ObjectId;
   consumedKg: number;
+  compoundCode?: string;
+  date?: string;
 }
 
 export interface BeltDoc extends Document {
@@ -47,6 +49,8 @@ const BatchUsageSchema = new Schema(
   {
     batchId: { type: Schema.Types.ObjectId, ref: 'CompoundBatch', required: true },
     consumedKg: { type: Number, required: true },
+    compoundCode: { type: String },
+    date: { type: String },
   },
   { _id: false }
 );
