@@ -8,7 +8,65 @@ import { createBeltRequestSchema } from '@/schemas/create-belt-schema';
 import Belt from '@/model/Belt';
 import { BeltFormData } from '@/types/belt';
 import { createBelt } from '@/lib/services/belt-service';
+import CompoundBatch from '@/model/CompoundBatch';
+import Fabric from '@/model/Fabric';
 
+
+/**
+ * Enrich batch usage data with compound code and date from CompoundBatch
+ */
+async function enrichBatchData(
+  batchesUsed?: Array<{ batchId: mongoose.Types.ObjectId | string; consumedKg: number }>
+): Promise<
+  Array<{
+    batchId: string;
+    consumedKg: number;
+    compoundCode?: string;
+    date?: string;
+  }>
+> {
+  if (!batchesUsed || batchesUsed.length === 0) {
+    return [];
+  }
+
+  // Collect all batch IDs and convert to ObjectId if needed
+  const batchIds = batchesUsed.map((batch) => {
+    if (typeof batch.batchId === 'string') {
+      return new mongoose.Types.ObjectId(batch.batchId);
+    }
+    return batch.batchId;
+  });
+
+  // Fetch all compound batches
+  const compoundBatches = await CompoundBatch.find({
+    _id: { $in: batchIds },
+  }).lean();
+
+  // Create a map for quick lookup
+  const batchMap = new Map<string, { compoundCode: string; date: string }>();
+  compoundBatches.forEach((batch) => {
+    if (batch._id && batch.compoundCode && batch.date) {
+      const batchIdStr = typeof batch._id === 'string' ? batch._id : batch._id.toString();
+      batchMap.set(batchIdStr, {
+        compoundCode: batch.compoundCode,
+        date: batch.date,
+      });
+    }
+  });
+
+  // Enrich the batch data
+  return batchesUsed.map((batch) => {
+    const batchIdStr =
+      typeof batch.batchId === 'string' ? batch.batchId : batch.batchId.toString();
+    const compoundBatch = batchMap.get(batchIdStr);
+    return {
+      batchId: batchIdStr,
+      consumedKg: batch.consumedKg,
+      compoundCode: compoundBatch?.compoundCode,
+      date: compoundBatch?.date,
+    };
+  });
+}
 
 async function getBelts(request: NextRequest) {
   try {
@@ -37,14 +95,74 @@ async function getBelts(request: NextRequest) {
       ];
     }
 
-    const belts = await Belt.find(query).sort({ createdAt: -1 });
-    // const convertedBelts = convertBeltDocumentsToBelts(belts);
+    const belts = await Belt.find(query).sort({ createdAt: -1 }).lean();
+
+    // Collect all fabric IDs
+    const fabricIds = belts
+      .map((belt) => belt.fabricId)
+      .filter((id) => id !== undefined && id !== null)
+      .map((id) => {
+        if (typeof id === 'string') {
+          return new mongoose.Types.ObjectId(id);
+        }
+        return id as mongoose.Types.ObjectId;
+      });
+
+    // Fetch all fabrics
+    const fabrics = await Fabric.find({
+      _id: { $in: fabricIds },
+    }).lean();
+
+    // Create a map for quick lookup
+    const fabricMap = new Map<string, typeof fabrics[0]>();
+    fabrics.forEach((fabric) => {
+      if (fabric._id) {
+        const fabricIdStr =
+          typeof fabric._id === 'string' ? fabric._id : fabric._id.toString();
+        fabricMap.set(fabricIdStr, fabric);
+      }
+    });
+
+    // Enrich batch data with compound code and date, and include fabric data
+    const enrichedBelts = await Promise.all(
+      belts.map(async (belt) => {
+        const coverBatchesUsed = await enrichBatchData(belt.coverBatchesUsed);
+        const skimBatchesUsed = await enrichBatchData(belt.skimBatchesUsed);
+
+        // Get fabric data if fabricId exists
+        let fabric = undefined;
+        if (belt.fabricId) {
+          const fabricIdStr =
+            typeof belt.fabricId === 'string'
+              ? belt.fabricId
+              : belt.fabricId.toString();
+          const fabricDoc = fabricMap.get(fabricIdStr);
+          if (fabricDoc) {
+            fabric = {
+              type: fabricDoc.type,
+              rating: fabricDoc.rating,
+              strength: fabricDoc.strength,
+              supplier: fabricDoc.supplier,
+              rollNumber: fabricDoc.rollNumber,
+              consumedMeters: fabricDoc.consumedMeters,
+            };
+          }
+        }
+
+        return {
+          ...belt,
+          fabric,
+          coverBatchesUsed,
+          skimBatchesUsed,
+        };
+      })
+    );
 
     return NextResponse.json(
       {
         success: true,
-        data: belts,
-        count: belts.length,
+        data: enrichedBelts,
+        count: enrichedBelts.length,
       },
       { status: 200 }
     );

@@ -4,11 +4,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { FabricInfo } from '@/types/belt';
 
 interface BeltDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  belt: BeltDoc;
+  belt: BeltDoc & { fabric?: FabricInfo };
 }
 
 const DetailRow = ({
@@ -33,6 +34,14 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
     } catch {
       return dateString;
     }
+  };
+
+  const formatCompoundCode = (code?: string, date?: string) => {
+    if (!code) return '-';
+    if (!date) return code;
+    // Format date from YYYY-MM-DD to YYYYMMDD (remove dashes)
+    const formattedDate = date.replace(/-/g, '');
+    return `${code}-${formattedDate}`;
   };
 
   return (
@@ -207,7 +216,23 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                         <div key={index} className="p-2 bg-muted rounded-md text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <span className="text-muted-foreground">Batch ID:</span>
-                            <span>{batch.batchId.toString()}</span>
+                            <span>
+                              {typeof batch.batchId === 'string'
+                                ? batch.batchId
+                                : batch.batchId.toString()}
+                            </span>
+                            {batch.compoundCode && (
+                              <>
+                                <span className="text-muted-foreground">Compound Code:</span>
+                                <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>
+                              </>
+                            )}
+                            {batch.date && (
+                              <>
+                                <span className="text-muted-foreground">Date:</span>
+                                <span>{formatDate(batch.date)}</span>
+                              </>
+                            )}
                             <span className="text-muted-foreground">Consumed:</span>
                             <span>{batch.consumedKg} kg</span>
                           </div>
@@ -224,7 +249,23 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                         <div key={index} className="p-2 bg-muted rounded-md text-sm">
                           <div className="grid grid-cols-2 gap-2">
                             <span className="text-muted-foreground">Batch ID:</span>
-                            <span>{batch.batchId.toString()}</span>
+                            <span>
+                              {typeof batch.batchId === 'string'
+                                ? batch.batchId
+                                : batch.batchId.toString()}
+                            </span>
+                            {batch.compoundCode && (
+                              <>
+                                <span className="text-muted-foreground">Compound Code:</span>
+                                <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>
+                              </>
+                            )}
+                            {batch.date && (
+                              <>
+                                <span className="text-muted-foreground">Date:</span>
+                                <span>{formatDate(batch.date)}</span>
+                              </>
+                            )}
                             <span className="text-muted-foreground">Consumed:</span>
                             <span>{batch.consumedKg} kg</span>
                           </div>
@@ -239,15 +280,32 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
             </>
           )}
 
-          {/* Metadata */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Metadata</h3>
-            <div className="space-y-1">
-              <DetailRow label="Created At" value={formatDate(belt.createdAt?.toString())} />
-              <DetailRow label="Updated At" value={formatDate(belt.updatedAt?.toString())} />
-              {belt.fabricId && <DetailRow label="Fabric ID" value={belt.fabricId.toString()} />}
-            </div>
-          </div>
+          {/* Fabric Information */}
+          {belt.fabric && (
+            <>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Fabric Information</h3>
+                <div className="space-y-1">
+                  <DetailRow label="Type" value={belt.fabric.type || '-'} />
+                  <DetailRow label="Rating" value={belt.fabric.rating || '-'} />
+                  <DetailRow
+                    label="Strength"
+                    value={belt.fabric.strength !== undefined ? belt.fabric.strength : '-'}
+                  />
+                  <DetailRow label="Supplier" value={belt.fabric.supplier || '-'} />
+                  <DetailRow label="Roll Number" value={belt.fabric.rollNumber || '-'} />
+                  <DetailRow
+                    label="Consumed Meters"
+                    value={
+                      belt.fabric.consumedMeters !== undefined
+                        ? `${belt.fabric.consumedMeters} m`
+                        : '-'
+                    }
+                  />
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

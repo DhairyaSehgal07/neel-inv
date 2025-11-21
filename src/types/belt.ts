@@ -115,6 +115,8 @@ export interface FabricInfo {
 export interface BatchUsage {
   batchId: string;
   consumedKg: number;
+  compoundCode?: string;
+  date?: string;
 }
 
 export interface Belt {

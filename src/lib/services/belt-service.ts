@@ -144,6 +144,14 @@ export async function createBelt(
     throw new Error('Skim compound code is required');
   }
 
+  // Parse fabric consumed (can be number or string)
+  const fabricConsumedMeters =
+    typeof formData.fabricConsumed === 'number'
+      ? formData.fabricConsumed
+      : typeof formData.fabricConsumed === 'string'
+        ? parseFloat(formData.fabricConsumed)
+        : undefined;
+
   // Ensure/Create Fabric record
   const fabricId = await ensureFabric(
     {
@@ -152,8 +160,7 @@ export async function createBelt(
       strength: typeof formData.beltStrength === 'number' ? formData.beltStrength : undefined,
       supplier: formData.fabricSupplier,
       rollNumber: formData.rollNumber,
-      consumedMeters:
-        typeof formData.fabricConsumed === 'number' ? formData.fabricConsumed : undefined,
+      consumedMeters: fabricConsumedMeters !== undefined && !isNaN(fabricConsumedMeters) ? fabricConsumedMeters : undefined,
     },
     session
   );
@@ -164,19 +171,30 @@ export async function createBelt(
   // Consume skim compound
   const skimUsage = await consumeCompound(skimCode, skimConsumedKg, preferredDate, session);
 
+  // Helper function to parse number from string or number
+  const parseNumber = (value: number | string | undefined): number | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+
   // Prepare belt data
   const beltData: Partial<BeltDoc> = {
     beltNumber: formData.beltNumber,
     rating: formData.rating,
     fabricId,
-    topCoverMm: typeof formData.topCover === 'number' ? formData.topCover : undefined,
-    bottomCoverMm: typeof formData.bottomCover === 'number' ? formData.bottomCover : undefined,
-    beltLengthM: typeof formData.beltLength === 'number' ? formData.beltLength : undefined,
-    beltWidthMm: typeof formData.beltWidth === 'number' ? formData.beltWidth : undefined,
+    topCoverMm: parseNumber(formData.topCover),
+    bottomCoverMm: parseNumber(formData.bottomCover),
+    beltLengthM: parseNumber(formData.beltLength),
+    beltWidthMm: parseNumber(formData.beltWidth),
     edge: formData.edge as 'Cut' | 'Moulded' | undefined,
     breakerPly: formData.breakerPly,
     breakerPlyRemarks: formData.breakerPlyRemarks,
-    carcassMm: typeof formData.carcass === 'number' ? formData.carcass : undefined,
+    carcassMm: parseNumber(formData.carcass),
     coverGrade: formData.coverGrade,
     orderNumber: formData.orderNumber,
     buyerName: formData.buyerName,
