@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.6](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.5...v0.1.6) (2025-11-21)
+
+
+### Bug Fixes
+
+* add missing compoundCode and date fields to BatchUsage interface ([715dcf4](https://github.com/DhairyaSehgal07/neel-inv/commit/715dcf470bc787b4f1e2da955641389b27f66097))
+
 ### [0.1.5](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.4...v0.1.5) (2025-11-21)
 
 
