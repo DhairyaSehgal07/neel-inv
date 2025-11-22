@@ -9,6 +9,8 @@ export interface CompoundHistoryDoc extends Document {
   weightPerBatch: number;
   totalInventory: number;
   closingBalance: number; // inventoryRemaining at the time of insertion
+  coverCompoundProducedOn?: string; // YYYY-MM-DD - date when used for cover compound
+  skimCompoundProducedOn?: string; // YYYY-MM-DD - date when used for skim compound
   createdAt: Date;
 }
 
@@ -22,6 +24,8 @@ const CompoundHistorySchema = new Schema<CompoundHistoryDoc>(
     weightPerBatch: { type: Number, required: true },
     totalInventory: { type: Number, required: true },
     closingBalance: { type: Number, required: true },
+    coverCompoundProducedOn: { type: String }, // YYYY-MM-DD
+    skimCompoundProducedOn: { type: String }, // YYYY-MM-DD
   },
   { timestamps: true }
 );

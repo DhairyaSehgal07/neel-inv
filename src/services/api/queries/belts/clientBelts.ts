@@ -64,3 +64,30 @@ export function useCreateBeltMutation() {
     },
   });
 }
+
+interface UpdateBeltPayload {
+  formData: BeltFormData;
+  coverCompoundCode?: string;
+  skimCompoundCode?: string;
+  coverConsumedKg?: number;
+  skimConsumedKg?: number;
+}
+
+async function updateBeltClient(id: string, payload: UpdateBeltPayload): Promise<BeltDoc> {
+  const response = await api.put<ApiResponse<BeltDoc>>(`/api/belts/${id}`, payload);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to update belt');
+  }
+  return response.data.data!;
+}
+
+export function useUpdateBeltMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateBeltPayload }) =>
+      updateBeltClient(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['belts'] });
+    },
+  });
+}

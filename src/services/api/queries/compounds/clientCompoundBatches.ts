@@ -2,7 +2,7 @@
 'use client';
 
 import { api } from '../../axios';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiResponse } from '@/types/apiResponse';
 import { CompoundBatchDoc } from '@/model/CompoundBatch';
 
@@ -39,5 +39,35 @@ export function useCompoundBatchesQuery(params?: FetchCompoundBatchesParams) {
     queryKey: ['compoundBatches', params],
     queryFn: () => getCompoundBatchesClient(params),
     staleTime: 1000 * 60, // 1 min
+  });
+}
+
+interface UpdateCompoundBatchPayload {
+  compoundCode?: string;
+  compoundName?: string;
+  date?: string;
+  batches?: number;
+  weightPerBatch?: number;
+}
+
+async function updateCompoundBatchClient(
+  id: string,
+  payload: UpdateCompoundBatchPayload
+): Promise<CompoundBatchDoc> {
+  const response = await api.put<ApiResponse<CompoundBatchDoc>>(`/api/compounds/batches/${id}`, payload);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to update compound batch');
+  }
+  return response.data.data!;
+}
+
+export function useUpdateCompoundBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateCompoundBatchPayload }) =>
+      updateCompoundBatchClient(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compoundBatches'] });
+    },
   });
 }

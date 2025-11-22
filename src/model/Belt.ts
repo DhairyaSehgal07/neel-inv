@@ -5,6 +5,8 @@ export interface BatchUsage {
   consumedKg: number;
   compoundCode?: string;
   date?: string;
+  coverCompoundProducedOn?: string;
+  skimCompoundProducedOn?: string;
 }
 
 export interface BeltDoc extends Document {
@@ -36,6 +38,8 @@ export interface BeltDoc extends Document {
     pidDate?: string;
     packagingDate?: string;
     dispatchDate?: string;
+    coverCompoundProducedOn?: string;
+    skimCompoundProducedOn?: string;
   };
   coverBatchesUsed?: BatchUsage[];
   skimBatchesUsed?: BatchUsage[];
@@ -51,6 +55,8 @@ const BatchUsageSchema = new Schema(
     consumedKg: { type: Number, required: true },
     compoundCode: { type: String },
     date: { type: String },
+    coverCompoundProducedOn: { type: String },
+    skimCompoundProducedOn: { type: String },
   },
   { _id: false }
 );
@@ -86,6 +92,8 @@ const BeltSchema = new Schema<BeltDoc>(
       pidDate: String,
       packagingDate: String,
       dispatchDate: String,
+      coverCompoundProducedOn: String,
+      skimCompoundProducedOn: String,
     },
     coverBatchesUsed: { type: [BatchUsageSchema], default: [] },
     skimBatchesUsed: { type: [BatchUsageSchema], default: [] },

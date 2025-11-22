@@ -127,6 +127,8 @@ export async function generateCompoundBatch(
         weightPerBatch,
         totalInventory,
         closingBalance: totalInventory, // At creation, closingBalance = totalInventory
+        coverCompoundProducedOn: created[0].coverCompoundProducedOn,
+        skimCompoundProducedOn: created[0].skimCompoundProducedOn,
       };
 
       await CompoundHistory.create([historyData], createOptions);
@@ -155,7 +157,9 @@ export async function consumeCompound(
   compoundCode: string,
   requiredKg: number,
   preferredDate: string,
-  session?: ClientSession
+  session?: ClientSession,
+  producedOn?: string, // YYYY-MM-DD - date when compound was produced/used
+  compoundType?: 'cover' | 'skim' // Indicates if this is for cover or skim compound
 ): Promise<ConsumeResult> {
   let remaining = requiredKg;
   const batchesUsed: BatchUsage[] = [];
@@ -192,17 +196,37 @@ export async function consumeCompound(
     let currentBatch = batch;
 
     while (!updated && retryCount < maxRetries) {
+      // Build update object
+      const updateObj: {
+        $inc: { inventoryRemaining: number; consumed: number };
+        $set?: { coverCompoundProducedOn?: string; skimCompoundProducedOn?: string };
+      } = {
+        $inc: {
+          inventoryRemaining: -currentToConsume,
+          consumed: currentToConsume,
+        },
+      };
+
+      // Set producedOn date if provided and not already set (preserve first usage date)
+      if (producedOn && compoundType) {
+        updateObj.$set = {};
+        if (compoundType === 'cover' && !currentBatch.coverCompoundProducedOn) {
+          updateObj.$set.coverCompoundProducedOn = producedOn;
+        } else if (compoundType === 'skim' && !currentBatch.skimCompoundProducedOn) {
+          updateObj.$set.skimCompoundProducedOn = producedOn;
+        }
+        // If $set is empty, remove it
+        if (Object.keys(updateObj.$set || {}).length === 0) {
+          delete updateObj.$set;
+        }
+      }
+
       const updateQuery = CompoundBatch.findOneAndUpdate(
         {
           _id: currentBatch._id,
           inventoryRemaining: { $gte: currentToConsume }, // Conditional: only update if enough inventory
         },
-        {
-          $inc: {
-            inventoryRemaining: -currentToConsume,
-            consumed: currentToConsume,
-          },
-        },
+        updateObj,
         { new: true }
       );
 
@@ -237,6 +261,34 @@ export async function consumeCompound(
     if (!updated) {
       // Could not consume from this batch, try next one
       continue;
+    }
+
+    // Update existing CompoundHistory entry if producedOn date was set for the first time
+    if (producedOn && compoundType && updated) {
+      const wasFirstTimeSet =
+        (compoundType === 'cover' && !currentBatch.coverCompoundProducedOn && updated.coverCompoundProducedOn) ||
+        (compoundType === 'skim' && !currentBatch.skimCompoundProducedOn && updated.skimCompoundProducedOn);
+
+      if (wasFirstTimeSet) {
+        // Update the existing CompoundHistory entry instead of creating a new one
+        const updateQuery = CompoundHistory.findOneAndUpdate(
+          { batchId: updated._id },
+          {
+            $set: {
+              coverCompoundProducedOn: updated.coverCompoundProducedOn,
+              skimCompoundProducedOn: updated.skimCompoundProducedOn,
+              closingBalance: updated.inventoryRemaining,
+            },
+          },
+          { new: true }
+        );
+
+        if (session) {
+          updateQuery.session(session);
+        }
+
+        await updateQuery.exec();
+      }
     }
 
     batchesUsed.push({

@@ -9,6 +9,8 @@ export interface CompoundBatchDoc extends Document {
   totalInventory: number; // batches * weightPerBatch
   inventoryRemaining: number;
   consumed: number;
+  coverCompoundProducedOn?: string; // YYYY-MM-DD - date when used for cover compound
+  skimCompoundProducedOn?: string; // YYYY-MM-DD - date when used for skim compound
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +25,8 @@ const CompoundBatchSchema = new Schema<CompoundBatchDoc>(
     totalInventory: { type: Number, required: true },
     inventoryRemaining: { type: Number, required: true, default: 0 },
     consumed: { type: Number, required: true, default: 0 },
+    coverCompoundProducedOn: { type: String }, // YYYY-MM-DD
+    skimCompoundProducedOn: { type: String }, // YYYY-MM-DD
   },
   { timestamps: true }
 );

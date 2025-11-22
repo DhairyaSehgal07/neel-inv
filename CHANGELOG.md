@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.7](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.6...v0.1.7) (2025-01-27)
+
+
+### Features
+
+* add edit functionality for belts with comprehensive form dialog
+* add edit functionality for compound batches with update dialog
+* add API route for updating belts (PUT /api/belts/[id])
+* add API route for updating compound batches (PUT /api/compounds/batches/[id])
+* add row actions for compound batches table with edit option
+* add update belt mutation hook for React Query
+* add update compound batch mutation hook for React Query
+* add updateBeltRequestSchema for validating belt update requests
+* enhance belt and compound services with update methods
+* add history tracking for belt and compound batch updates
+
 ### [0.1.6](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.5...v0.1.6) (2025-11-21)
 
 

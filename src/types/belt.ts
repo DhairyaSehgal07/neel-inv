@@ -117,6 +117,8 @@ export interface BatchUsage {
   consumedKg: number;
   compoundCode?: string;
   date?: string;
+  coverCompoundProducedOn?: string;
+  skimCompoundProducedOn?: string;
 }
 
 export interface Belt {

@@ -36,11 +36,17 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
     }
   };
 
-  const formatCompoundCode = (code?: string, date?: string) => {
+  const formatCompoundCode = (
+    code?: string,
+    producedOn?: string,
+    consumedOn?: string
+  ) => {
     if (!code) return '-';
-    if (!date) return code;
+    // Use producedOn date if available, otherwise fall back to consumedOn date
+    const dateToUse = producedOn || consumedOn;
+    if (!dateToUse) return code;
     // Format date from YYYY-MM-DD to YYYYMMDD (remove dashes)
-    const formattedDate = date.replace(/-/g, '');
+    const formattedDate = dateToUse.replace(/-/g, '');
     return `${code}-${formattedDate}`;
   };
 
@@ -224,12 +230,24 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                             {batch.compoundCode !== undefined && (
                               <>
                                 <span className="text-muted-foreground">Compound Code:</span>
-                                <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>
+                                <span>
+                                  {formatCompoundCode(
+                                    batch.compoundCode,
+                                    batch.coverCompoundProducedOn,
+                                    batch.date
+                                  )}
+                                </span>
+                              </>
+                            )}
+                            {batch.coverCompoundProducedOn && (
+                              <>
+                                <span className="text-muted-foreground">Produced On:</span>
+                                <span>{formatDate(batch.coverCompoundProducedOn)}</span>
                               </>
                             )}
                             {batch.date && (
                               <>
-                                <span className="text-muted-foreground">Date:</span>
+                                <span className="text-muted-foreground">Consumed On:</span>
                                 <span>{formatDate(batch.date)}</span>
                               </>
                             )}
@@ -257,12 +275,24 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                             {batch.compoundCode !== undefined && (
                               <>
                                 <span className="text-muted-foreground">Compound Code:</span>
-                                <span>{formatCompoundCode(batch.compoundCode, batch.date)}</span>
+                                <span>
+                                  {formatCompoundCode(
+                                    batch.compoundCode,
+                                    batch.skimCompoundProducedOn,
+                                    batch.date
+                                  )}
+                                </span>
+                              </>
+                            )}
+                            {batch.skimCompoundProducedOn && (
+                              <>
+                                <span className="text-muted-foreground">Produced On:</span>
+                                <span>{formatDate(batch.skimCompoundProducedOn)}</span>
                               </>
                             )}
                             {batch.date && (
                               <>
-                                <span className="text-muted-foreground">Date:</span>
+                                <span className="text-muted-foreground">Consumed On:</span>
                                 <span>{formatDate(batch.date)}</span>
                               </>
                             )}

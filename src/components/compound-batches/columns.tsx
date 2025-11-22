@@ -2,6 +2,7 @@
 
 import { ColumnDef } from '@tanstack/react-table';
 import { CompoundBatchDoc } from '@/model/CompoundBatch';
+import { DataTableRowActions } from './row-actions';
 
 export const columns: ColumnDef<CompoundBatchDoc>[] = [
   {
@@ -9,9 +10,11 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
     header: 'Compound Code',
     cell: ({ row }) => {
       const code = row.original.compoundCode;
-      const date = row.original.date;
+      // Use producedOn date if available, otherwise fall back to consumption date
+      const producedOnDate = row.original.coverCompoundProducedOn || row.original.skimCompoundProducedOn;
+      const dateToUse = producedOnDate || row.original.date;
       // Format date from YYYY-MM-DD to a shorter format or keep as is
-      const formattedDate = date ? date.replace(/-/g, '') : '';
+      const formattedDate = dateToUse ? dateToUse.replace(/-/g, '') : '';
       return `${code}-${formattedDate}`;
     },
     filterFn: (row, id, value) => {
@@ -19,7 +22,8 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
       const code = row.original.compoundCode?.toLowerCase() || '';
       const name = row.original.compoundName?.toLowerCase() || '';
       const date = row.original.date?.toLowerCase() || '';
-      return code.includes(searchValue) || name.includes(searchValue) || date.includes(searchValue);
+      const producedOn = (row.original.coverCompoundProducedOn || row.original.skimCompoundProducedOn)?.toLowerCase() || '';
+      return code.includes(searchValue) || name.includes(searchValue) || date.includes(searchValue) || producedOn.includes(searchValue);
     },
   },
   {
@@ -33,8 +37,28 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
     },
   },
   {
+    accessorKey: 'producedOn',
+    header: 'Produced On',
+    cell: ({ row }) => {
+      const coverProducedOn = row.original.coverCompoundProducedOn;
+      const skimProducedOn = row.original.skimCompoundProducedOn;
+
+      // Show both if both exist, otherwise show the one that exists
+      if (coverProducedOn && skimProducedOn) {
+        const coverDate = new Date(coverProducedOn).toLocaleDateString();
+        const skimDate = new Date(skimProducedOn).toLocaleDateString();
+        return `Cover: ${coverDate}, Skim: ${skimDate}`;
+      } else if (coverProducedOn) {
+        return new Date(coverProducedOn).toLocaleDateString();
+      } else if (skimProducedOn) {
+        return new Date(skimProducedOn).toLocaleDateString();
+      }
+      return '-';
+    },
+  },
+  {
     accessorKey: 'date',
-    header: 'Date',
+    header: 'Consumed On',
     cell: ({ row }) => {
       const date = row.original.date;
       // Format YYYY-MM-DD to a more readable format
@@ -42,7 +66,7 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
         const dateObj = new Date(date);
         return dateObj.toLocaleDateString();
       }
-      return date;
+      return date || '-';
     },
   },
   {
@@ -81,11 +105,7 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
     },
   },
   {
-    accessorKey: 'createdAt',
-    header: 'Created At',
-    cell: ({ row }) => {
-      const date = new Date(row.original.createdAt);
-      return date.toLocaleDateString();
-    },
+    id: 'actions',
+    cell: ({ row }) => <DataTableRowActions row={row} />,
   },
 ];

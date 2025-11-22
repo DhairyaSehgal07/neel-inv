@@ -23,6 +23,8 @@ async function enrichBatchData(
     consumedKg: number;
     compoundCode?: string;
     date?: string;
+    coverCompoundProducedOn?: string;
+    skimCompoundProducedOn?: string;
   }>
 > {
   if (!batchesUsed || batchesUsed.length === 0) {
@@ -43,13 +45,20 @@ async function enrichBatchData(
   }).lean();
 
   // Create a map for quick lookup
-  const batchMap = new Map<string, { compoundCode: string; date: string }>();
+  const batchMap = new Map<string, {
+    compoundCode: string;
+    date: string;
+    coverCompoundProducedOn?: string;
+    skimCompoundProducedOn?: string;
+  }>();
   compoundBatches.forEach((batch) => {
     if (batch._id && batch.compoundCode && batch.date) {
       const batchIdStr = typeof batch._id === 'string' ? batch._id : batch._id.toString();
       batchMap.set(batchIdStr, {
         compoundCode: batch.compoundCode,
         date: batch.date,
+        coverCompoundProducedOn: batch.coverCompoundProducedOn,
+        skimCompoundProducedOn: batch.skimCompoundProducedOn,
       });
     }
   });
@@ -64,6 +73,8 @@ async function enrichBatchData(
       consumedKg: batch.consumedKg,
       compoundCode: compoundBatch?.compoundCode,
       date: compoundBatch?.date,
+      coverCompoundProducedOn: compoundBatch?.coverCompoundProducedOn,
+      skimCompoundProducedOn: compoundBatch?.skimCompoundProducedOn,
     };
   });
 }

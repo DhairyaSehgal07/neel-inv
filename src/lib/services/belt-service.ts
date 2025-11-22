@@ -165,11 +165,42 @@ export async function createBelt(
     session
   );
 
+  // Format producedOn dates if provided
+  const coverProducedOn = formData.coverCompoundProducedOn
+    ? formatLocalDate(
+        formData.coverCompoundProducedOn instanceof Date
+          ? formData.coverCompoundProducedOn
+          : new Date(formData.coverCompoundProducedOn)
+      )
+    : undefined;
+
+  const skimProducedOn = formData.skimCompoundProducedOn
+    ? formatLocalDate(
+        formData.skimCompoundProducedOn instanceof Date
+          ? formData.skimCompoundProducedOn
+          : new Date(formData.skimCompoundProducedOn)
+      )
+    : undefined;
+
   // Consume cover compound
-  const coverUsage = await consumeCompound(coverCode, coverConsumedKg, preferredDate, session);
+  const coverUsage = await consumeCompound(
+    coverCode,
+    coverConsumedKg,
+    preferredDate,
+    session,
+    coverProducedOn,
+    'cover'
+  );
 
   // Consume skim compound
-  const skimUsage = await consumeCompound(skimCode, skimConsumedKg, preferredDate, session);
+  const skimUsage = await consumeCompound(
+    skimCode,
+    skimConsumedKg,
+    preferredDate,
+    session,
+    skimProducedOn,
+    'skim'
+  );
 
   // Helper function to parse number from string or number
   const parseNumber = (value: number | string | undefined): number | undefined => {
@@ -218,6 +249,12 @@ export async function createBelt(
       pidDate: formData.pdiDate ? formatLocalDate(formData.pdiDate) : undefined,
       packagingDate: formData.packagingDate ? formatLocalDate(formData.packagingDate) : undefined,
       dispatchDate: formData.dispatchDate ? formatLocalDate(formData.dispatchDate) : undefined,
+      coverCompoundProducedOn: formData.coverCompoundProducedOn
+        ? formatLocalDate(formData.coverCompoundProducedOn)
+        : undefined,
+      skimCompoundProducedOn: formData.skimCompoundProducedOn
+        ? formatLocalDate(formData.skimCompoundProducedOn)
+        : undefined,
     },
     coverBatchesUsed: coverUsage.batchesUsed,
     skimBatchesUsed: skimUsage.batchesUsed,
