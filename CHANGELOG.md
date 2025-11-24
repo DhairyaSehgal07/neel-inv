@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.8](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.7...v0.1.8) (2025-11-24)
+
+
+### Bug Fixes
+
+* improve date handling and compound date calculations ([6067f24](https://github.com/DhairyaSehgal07/neel-inv/commit/6067f249514e9bb1fabb129591a148121d6a4c49))
+
 ### [0.1.7](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.6...v0.1.7) (2025-01-27)
 
 
