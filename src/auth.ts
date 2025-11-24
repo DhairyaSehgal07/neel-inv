@@ -31,7 +31,8 @@ export const { auth, handlers } = NextAuth({
           await dbConnect();
 
           // 🔍 Find user by mobile number
-          const user = await UserModel.findOne({ mobileNumber });
+          // Use .lean() to get a plain JavaScript object instead of a Mongoose document
+          const user = await UserModel.findOne({ mobileNumber }).lean();
 
           if (!user) {
             throw new Error('No user found with this mobile number');
@@ -49,13 +50,18 @@ export const { auth, handlers } = NextAuth({
           }
 
           // ✅ Return user (single id field)
+          // Deeply serialize permissions array to ensure it's a plain array of strings
+          const permissions = Array.isArray(user.permissions)
+            ? JSON.parse(JSON.stringify(user.permissions))
+            : [];
+
           return {
             id: String(user._id),
-            name: user.name,
-            mobileNumber: user.mobileNumber,
-            role: user.role,
-            permissions: user.permissions || [],
-            isActive: user.isActive,
+            name: String(user.name || ''),
+            mobileNumber: String(user.mobileNumber || ''),
+            role: String(user.role || ''),
+            permissions: permissions,
+            isActive: Boolean(user.isActive),
           } as User;
         } catch (err) {
           const error = err as Error;
@@ -73,7 +79,10 @@ export const { auth, handlers } = NextAuth({
         token.mobileNumber = user.mobileNumber;
         token.name = user.name;
         token.role = user.role;
-        token.permissions = user.permissions || [];
+        // Deeply serialize permissions to ensure it's a plain array
+        token.permissions = Array.isArray(user.permissions)
+          ? JSON.parse(JSON.stringify(user.permissions))
+          : [];
         token.isActive = user.isActive;
       }
       return token;

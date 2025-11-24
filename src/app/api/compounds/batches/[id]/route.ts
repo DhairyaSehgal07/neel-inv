@@ -163,4 +163,4 @@ async function updateCompoundBatchHandler(
 export const PUT = (
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
-) => withRBACParams(request, context.params, Permission.COMPOUND_MASTER_UPDATE, updateCompoundBatchHandler);
+) => withRBACParams(request, context.params, Permission.COMPOUND_BATCH_UPDATE, updateCompoundBatchHandler);

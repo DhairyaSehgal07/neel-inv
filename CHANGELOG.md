@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.8...v0.1.9) (2025-01-28)
+
+
+### Features
+
+* add Spinner UI component for loading states
+* add compound batch permissions to RBAC system
+* enhance database connection with automatic user seeding (Admin and Manager roles)
+* add RBAC protection to compound batches API routes
+* improve user avatar component with role-based avatar images
+
+### Bug Fixes
+
+* improve permission serialization in authentication flow to ensure proper array handling
+* enhance form components with better state management
+
 ### [0.1.8](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.7...v0.1.8) (2025-11-24)
 
 

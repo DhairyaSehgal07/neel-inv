@@ -7,6 +7,7 @@ export function UserAvatar() {
   const { data: session } = useSession();
   const user = session?.user;
   const userName = user?.name || 'User';
+  const isAdmin = user?.role === 'Admin';
 
   // Get user initials from name
   const getInitials = (name: string) => {
@@ -20,7 +21,14 @@ export function UserAvatar() {
 
   return (
     <Avatar className="h-9 w-9">
-      <AvatarImage src="https://github.com/shadcn.png" alt={userName} />
+      <AvatarImage
+        src={
+          isAdmin
+            ? 'https://github.com/shadcn.png'
+            : 'https://avatars.githubusercontent.com/u/6880091?v=4'
+        }
+        alt={userName}
+      />
       <AvatarFallback>{getInitials(userName)}</AvatarFallback>
     </Avatar>
   );

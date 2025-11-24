@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
+import { useSession } from 'next-auth/react';
 
 interface FabricInfoStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -22,6 +23,9 @@ interface FabricInfoStepProps {
 
 export const FabricInfoStep = ({ form, onNext, onBack }: FabricInfoStepProps) => {
   const { handleSubmit, control, watch, setValue } = form;
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'Admin';
+
 
   const beltLength = watch('beltLength');
   const rating = watch('rating');
@@ -87,9 +91,15 @@ export const FabricInfoStep = ({ form, onNext, onBack }: FabricInfoStepProps) =>
             <FormItem>
               <FormLabel>Fabric Consumed (meters)</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  disabled
+                  placeholder="Auto-calculated"
+                  autoComplete="off"
+                />
               </FormControl>
-              <FormDescription>Calculated: belt_length × rating_plies × 1.02</FormDescription>
+              {isAdmin && (<FormDescription>Calculated: belt_length × rating_plies × 1.02</FormDescription>)}
               {fabricCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">

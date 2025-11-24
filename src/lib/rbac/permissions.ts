@@ -5,31 +5,36 @@
  */
 export enum Permission {
   // Belt permissions
-  BELT_VIEW = "belt:view",
-  BELT_CREATE = "belt:create",
-  BELT_UPDATE = "belt:update",
-  BELT_DELETE = "belt:delete",
+  BELT_VIEW = 'belt:view',
+  BELT_CREATE = 'belt:create',
+  BELT_UPDATE = 'belt:update',
+  BELT_DELETE = 'belt:delete',
 
   // User management permissions
-  USER_VIEW = "user:view",
-  USER_CREATE = "user:create",
-  USER_UPDATE = "user:update",
-  USER_DELETE = "user:delete",
-  USER_MANAGE_PERMISSIONS = "user:manage_permissions",
+  USER_VIEW = 'user:view',
+  USER_CREATE = 'user:create',
+  USER_UPDATE = 'user:update',
+  USER_DELETE = 'user:delete',
+  USER_MANAGE_PERMISSIONS = 'user:manage_permissions',
 
   // Dashboard permissions
-  DASHBOARD_VIEW = "dashboard:view",
-  DASHBOARD_REVERSE_TRACKING = "dashboard:reverse_tracking",
+  DASHBOARD_VIEW = 'dashboard:view',
+  DASHBOARD_REVERSE_TRACKING = 'dashboard:reverse_tracking',
 
   // Reports permissions
-  REPORTS_VIEW = "reports:view",
-  REPORTS_EXPORT = "reports:export",
+  REPORTS_VIEW = 'reports:view',
+  REPORTS_EXPORT = 'reports:export',
 
   // Compound master permissions
-  COMPOUND_MASTER_VIEW = "compound_master:view",
-  COMPOUND_MASTER_CREATE = "compound_master:create",
-  COMPOUND_MASTER_UPDATE = "compound_master:update",
-  COMPOUND_MASTER_DELETE = "compound_master:delete",
+  COMPOUND_MASTER_VIEW = 'compound_master:view',
+  COMPOUND_MASTER_CREATE = 'compound_master:create',
+  COMPOUND_MASTER_UPDATE = 'compound_master:update',
+  COMPOUND_MASTER_DELETE = 'compound_master:delete',
+
+  COMPOUND_BATCH_VIEW = 'compound_batch:view',
+  COMPOUND_BATCH_CREATE = 'compound_batch:create',
+  COMPOUND_BATCH_UPDATE = 'compound_batch:update',
+  COMPOUND_BATCH_DELETE = 'compound_batch:delete',
 }
 
 /**

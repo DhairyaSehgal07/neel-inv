@@ -1,6 +1,6 @@
-import mongoose from "mongoose";
-import bcrypt from "bcryptjs";
-import UserModel from "@/model/User";
+import mongoose from 'mongoose';
+import bcrypt from 'bcryptjs';
+import UserModel from '@/model/User';
 
 type ConnectionObject = {
   isConnected?: number;
@@ -8,47 +8,63 @@ type ConnectionObject = {
 
 const connection: ConnectionObject = {};
 
-async function seedAdminUser() {
+async function seedUsers() {
   try {
-    const existingAdmin = await UserModel.findOne({ role: "Admin" });
-    if (existingAdmin) {
-      console.log("✅ Admin user already exists");
-      return;
+    const hashedPassword = await bcrypt.hash('123456', 10);
+    const hashedPassword2 = await bcrypt.hash('neelkanth@123', 10);
+
+    // Seed Admin
+    const existingAdmin = await UserModel.findOne({ role: 'Admin' });
+    if (!existingAdmin) {
+      const adminUser = new UserModel({
+        name: 'Aseem',
+        mobileNumber: '8437702351',
+        password: hashedPassword,
+        role: 'Admin',
+        isActive: true,
+      });
+      await adminUser.save();
+      console.log('🌱 Admin user seeded successfully');
+    } else {
+      console.log('✅ Admin user already exists');
     }
 
-    const hashedPassword = await bcrypt.hash("123456", 10);
-
-    const adminUser = new UserModel({
-      name: "Aseem",
-      mobileNumber: "8437702351",
-      password: hashedPassword,
-      role: "Admin",
-      isActive: true,
-    });
-
-    await adminUser.save();
-    console.log("🌱 Admin user seeded successfully");
+    // Seed Manager
+    const existingManager = await UserModel.findOne({ role: 'Manager' });
+    if (!existingManager) {
+      const managerUser = new UserModel({
+        name: 'Production',
+        mobileNumber: '7508586574',
+        password: hashedPassword2,
+        role: 'Manager',
+        isActive: true,
+      });
+      await managerUser.save();
+      console.log('🌱 Manager user seeded successfully');
+    } else {
+      console.log('✅ Manager user already exists');
+    }
   } catch (error) {
-    console.error("❌ Error seeding admin user:", error);
+    console.error('❌ Error seeding users:', error);
   }
 }
 
 async function dbConnect(): Promise<void> {
   if (connection.isConnected) {
-    console.log("Already connected to database");
+    console.log('Already connected to database');
     return;
   }
 
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI || "");
+    const db = await mongoose.connect(process.env.MONGODB_URI || '');
     connection.isConnected = db.connections[0].readyState;
 
-    console.log("✅ DB connected successfully");
+    console.log('✅ DB connected successfully');
 
-    // Seed admin user after successful connection
-    await seedAdminUser();
+    // Seed both users after DB connection
+    await seedUsers();
   } catch (error) {
-    console.log("❌ Database connection failed", error);
+    console.log('❌ Database connection failed', error);
     process.exit(1);
   }
 }

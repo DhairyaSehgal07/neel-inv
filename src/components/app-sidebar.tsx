@@ -15,6 +15,7 @@ import {
   SidebarHeader,
 } from '@/components/ui/sidebar';
 import Image from 'next/image';
+import { useSession } from 'next-auth/react';
 
 // 🎯 Only keep required items
 const navigationItems = [
@@ -45,6 +46,10 @@ const navigationItems = [
 
 const AppSidebar = () => {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'Admin';
+
+  const filteredNavigationItems = navigationItems.filter(item => (item.name === "Settings" ? isAdmin : true));
 
   return (
     <Sidebar collapsible="icon">
@@ -59,7 +64,7 @@ const AppSidebar = () => {
           <SidebarGroupLabel>Admin Factory Dashboard</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => {
+              {filteredNavigationItems.map((item) => {
                 // 🚀 Correct multi-route active check
                 const isActive =
                   pathname === item.href ||

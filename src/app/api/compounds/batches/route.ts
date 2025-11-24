@@ -42,4 +42,4 @@ async function getCompoundBatches(request: NextRequest) {
 }
 
 export const GET = (request: NextRequest) =>
-  withRBAC(request, Permission.COMPOUND_MASTER_VIEW, getCompoundBatches);
+  withRBAC(request, Permission.COMPOUND_BATCH_VIEW, getCompoundBatches);

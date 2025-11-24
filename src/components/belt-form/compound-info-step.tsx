@@ -22,6 +22,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
 import SearchSelect from '../search-select';
 import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
+import { useSession } from 'next-auth/react';
 
 interface CompoundInfoStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -31,7 +32,8 @@ interface CompoundInfoStepProps {
 
 export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps) => {
   const { handleSubmit, control, watch, setValue } = form;
-
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'Admin';
   const { data } = useCompoundMastersQuery();
 
   // Filter and transform compound masters for cover compounds
@@ -190,9 +192,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
               <FormControl>
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
-              <FormDescription>
-                Calculated: thickness_mm × SG × 1.06 × 1.02 × belt_width_m × belt_length_m
-              </FormDescription>
+              {isAdmin && (<FormDescription>Calculated: thickness_mm × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
               {coverCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">
@@ -237,10 +237,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
               <FormControl>
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
-              <FormDescription>
-                Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.06 × 1.02 × belt_width_m ×
-                belt_length_m
-              </FormDescription>
+              {isAdmin && (<FormDescription>Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
               {skimCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">
