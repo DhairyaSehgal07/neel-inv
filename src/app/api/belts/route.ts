@@ -10,6 +10,7 @@ import { BeltFormData } from '@/types/belt';
 import { createBelt } from '@/lib/services/belt-service';
 import CompoundBatch from '@/model/CompoundBatch';
 import Fabric from '@/model/Fabric';
+import { roundTo2Decimals } from '@/lib/utils';
 
 
 /**
@@ -234,19 +235,21 @@ export async function createBeltHandler(req: Request) {
     }
 
     // Validate compound consumption values
-    const coverConsumedKg =
+    const coverConsumedKg = roundTo2Decimals(
       typeof formData.coverCompoundConsumed === 'number'
         ? formData.coverCompoundConsumed
         : typeof formData.coverCompoundConsumed === 'string'
           ? parseFloat(formData.coverCompoundConsumed)
-          : 0;
+          : 0
+    );
 
-    const skimConsumedKg =
+    const skimConsumedKg = roundTo2Decimals(
       typeof formData.skimCompoundConsumed === 'number'
         ? formData.skimCompoundConsumed
         : typeof formData.skimCompoundConsumed === 'string'
           ? parseFloat(formData.skimCompoundConsumed)
-          : 0;
+          : 0
+    );
 
     if (coverConsumedKg <= 0) {
       return NextResponse.json(

@@ -91,3 +91,20 @@ export function useUpdateBeltMutation() {
     },
   });
 }
+
+async function deleteBeltClient(id: string): Promise<void> {
+  const response = await api.delete<ApiResponse<void>>(`/api/belts/${id}`);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to delete belt');
+  }
+}
+
+export function useDeleteBeltMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteBeltClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['belts'] });
+    },
+  });
+}

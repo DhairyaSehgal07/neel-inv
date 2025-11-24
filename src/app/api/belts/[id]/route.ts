@@ -9,6 +9,8 @@ import Belt from '@/model/Belt';
 import { BeltFormData } from '@/types/belt';
 import { formatLocalDate } from '@/lib/helpers/compound-utils';
 import Fabric from '@/model/Fabric';
+import { updateBeltWithQuantities, deleteBelt, ensureSeparateCompoundDates } from '@/lib/services/belt-service';
+import { roundTo2Decimals } from '@/lib/utils';
 
 /**
  * Update belt handler
@@ -74,9 +76,149 @@ async function updateBeltHandler(
       }
     }
 
+    // Parse quantities if provided
+    const coverConsumedKg = body.coverConsumedKg !== undefined
+      ? roundTo2Decimals(
+          typeof body.coverConsumedKg === 'number'
+            ? body.coverConsumedKg
+            : typeof body.coverConsumedKg === 'string'
+              ? parseFloat(body.coverConsumedKg)
+              : 0
+        )
+      : formData.coverCompoundConsumed !== undefined
+        ? roundTo2Decimals(
+            typeof formData.coverCompoundConsumed === 'number'
+              ? formData.coverCompoundConsumed
+              : typeof formData.coverCompoundConsumed === 'string'
+                ? parseFloat(formData.coverCompoundConsumed)
+                : 0
+          )
+        : undefined;
+
+    const skimConsumedKg = body.skimConsumedKg !== undefined
+      ? roundTo2Decimals(
+          typeof body.skimConsumedKg === 'number'
+            ? body.skimConsumedKg
+            : typeof body.skimConsumedKg === 'string'
+              ? parseFloat(body.skimConsumedKg)
+              : 0
+        )
+      : formData.skimCompoundConsumed !== undefined
+        ? roundTo2Decimals(
+            typeof formData.skimCompoundConsumed === 'number'
+              ? formData.skimCompoundConsumed
+              : typeof formData.skimCompoundConsumed === 'string'
+                ? parseFloat(formData.skimCompoundConsumed)
+                : 0
+          )
+        : undefined;
+
+    // Check if quantities are being updated
+    const quantitiesProvided = coverConsumedKg !== undefined || skimConsumedKg !== undefined;
+
     // Start transaction
     session = await mongoose.startSession();
     session.startTransaction();
+
+    // If quantities are provided, use the critical update handler
+    if (quantitiesProvided) {
+      try {
+        const updatedBelt = await updateBeltWithQuantities(
+          {
+            beltId: new mongoose.Types.ObjectId(id),
+            formData,
+            coverCompoundCode: body.coverCompoundCode,
+            skimCompoundCode: body.skimCompoundCode,
+            coverConsumedKg,
+            skimConsumedKg,
+            calendaringDate: formData.calendaringDate
+              ? formData.calendaringDate instanceof Date
+                ? formData.calendaringDate.toISOString()
+                : formData.calendaringDate
+              : undefined,
+          },
+          session
+        );
+
+        // Handle fabric update if fabric data is provided
+        let fabricId = updatedBelt.fabricId;
+        if (formData.fabricType || formData.rollNumber) {
+          const fabricConsumedMeters =
+            typeof formData.fabricConsumed === 'number'
+              ? formData.fabricConsumed
+              : typeof formData.fabricConsumed === 'string'
+                ? parseFloat(formData.fabricConsumed)
+                : undefined;
+
+          // Try to find existing fabric by rollNumber if provided
+          if (formData.rollNumber) {
+            const existingFabric = await Fabric.findOne({ rollNumber: formData.rollNumber }).session(session);
+            if (existingFabric) {
+              // Update consumed meters if provided
+              if (fabricConsumedMeters !== undefined && !isNaN(fabricConsumedMeters)) {
+                await Fabric.findByIdAndUpdate(
+                  existingFabric._id,
+                  { $inc: { consumedMeters: fabricConsumedMeters } },
+                  { new: true, session }
+                );
+              }
+              fabricId = existingFabric._id as mongoose.Types.ObjectId;
+            } else {
+              // Create new fabric
+              const fabricPayload = {
+                type: formData.fabricType as 'EP' | 'NN' | 'EE' | 'Other',
+                rating: formData.rating,
+                strength: typeof formData.beltStrength === 'number' ? formData.beltStrength : undefined,
+                supplier: formData.fabricSupplier,
+                rollNumber: formData.rollNumber,
+                consumedMeters: fabricConsumedMeters !== undefined && !isNaN(fabricConsumedMeters) ? fabricConsumedMeters : 0,
+              };
+              const created = await Fabric.create([fabricPayload], { session });
+              fabricId = created[0]._id as mongoose.Types.ObjectId;
+            }
+          } else if (formData.fabricType) {
+            // Create new fabric without rollNumber
+            const fabricPayload = {
+              type: formData.fabricType as 'EP' | 'NN' | 'EE' | 'Other',
+              rating: formData.rating,
+              strength: typeof formData.beltStrength === 'number' ? formData.beltStrength : undefined,
+              supplier: formData.fabricSupplier,
+              consumedMeters: fabricConsumedMeters !== undefined && !isNaN(fabricConsumedMeters) ? fabricConsumedMeters : 0,
+            };
+            const created = await Fabric.create([fabricPayload], { session });
+            fabricId = created[0]._id as mongoose.Types.ObjectId;
+          }
+
+          // Update fabricId if changed
+          if (fabricId && fabricId.toString() !== updatedBelt.fabricId?.toString()) {
+            await Belt.findByIdAndUpdate(
+              id,
+              { $set: { fabricId } },
+              { new: true, session }
+            );
+          }
+        }
+
+        // Commit transaction
+        await session.commitTransaction();
+
+        // Fetch updated belt
+        const finalBelt = await Belt.findById(id);
+
+        const response: ApiResponse = {
+          success: true,
+          message: 'Belt updated successfully',
+          data: finalBelt,
+        };
+
+        return NextResponse.json(response, { status: 200 });
+      } catch (error) {
+        console.error('Error updating belt with quantities:', error);
+        throw error;
+      }
+    }
+
+    // If no quantities provided, use the standard update logic (existing code)
 
     // Helper function to parse number from string or number
     const parseNumber = (value: number | string | undefined): number | undefined => {
@@ -170,6 +312,30 @@ async function updateBeltHandler(
       updateData.status = formData.status as 'Dispatched' | 'In Production';
     }
 
+    // Validate and ensure separate compound dates if provided
+    let validatedCoverDate: string | undefined = undefined;
+    let validatedSkimDate: string | undefined = undefined;
+
+    if (formData.coverCompoundProducedOn !== undefined || formData.skimCompoundProducedOn !== undefined) {
+      const coverDateRaw = formData.coverCompoundProducedOn
+        ? formatLocalDate(formData.coverCompoundProducedOn instanceof Date ? formData.coverCompoundProducedOn : new Date(formData.coverCompoundProducedOn))
+        : undefined;
+
+      const skimDateRaw = formData.skimCompoundProducedOn
+        ? formatLocalDate(formData.skimCompoundProducedOn instanceof Date ? formData.skimCompoundProducedOn : new Date(formData.skimCompoundProducedOn))
+        : undefined;
+
+      const validated = await ensureSeparateCompoundDates(
+        coverDateRaw,
+        skimDateRaw,
+        new mongoose.Types.ObjectId(id),
+        session
+      );
+
+      validatedCoverDate = validated.coverDate;
+      validatedSkimDate = validated.skimDate;
+    }
+
     // Update process dates
     if (
       formData.calendaringDate !== undefined ||
@@ -228,14 +394,10 @@ async function updateBeltHandler(
             : undefined,
         }),
         ...(formData.coverCompoundProducedOn !== undefined && {
-          coverCompoundProducedOn: formData.coverCompoundProducedOn
-            ? formatLocalDate(formData.coverCompoundProducedOn instanceof Date ? formData.coverCompoundProducedOn : new Date(formData.coverCompoundProducedOn))
-            : undefined,
+          coverCompoundProducedOn: validatedCoverDate,
         }),
         ...(formData.skimCompoundProducedOn !== undefined && {
-          skimCompoundProducedOn: formData.skimCompoundProducedOn
-            ? formatLocalDate(formData.skimCompoundProducedOn instanceof Date ? formData.skimCompoundProducedOn : new Date(formData.skimCompoundProducedOn))
-            : undefined,
+          skimCompoundProducedOn: validatedSkimDate,
         }),
       };
     }
@@ -295,3 +457,79 @@ export const PUT = (
   request: NextRequest,
   context: { params: Promise<{ id: string }> | { id: string } }
 ) => withRBACParams(request, context.params, Permission.BELT_UPDATE, updateBeltHandler);
+
+/**
+ * Delete belt handler
+ */
+async function deleteBeltHandler(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> | { id: string } }
+) {
+  let session: mongoose.ClientSession | undefined;
+  try {
+    await dbConnect();
+
+    // Handle both sync and async params (Next.js 15+)
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+
+    // Validate MongoDB ObjectId
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Invalid belt ID',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    // Check if belt exists
+    const existingBelt = await Belt.findById(id);
+    if (!existingBelt) {
+      const response: ApiResponse = {
+        success: false,
+        message: 'Belt not found',
+      };
+      return NextResponse.json(response, { status: 404 });
+    }
+
+    // Start transaction
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    // Delete belt with compound consumption handling
+    await deleteBelt(new mongoose.Types.ObjectId(id), session);
+
+    // Commit transaction
+    await session.commitTransaction();
+
+    const response: ApiResponse = {
+      success: true,
+      message: 'Belt deleted successfully',
+    };
+
+    return NextResponse.json(response, { status: 200 });
+  } catch (error) {
+    console.error('Error deleting belt:', error);
+
+    // Rollback transaction on error
+    if (session && session.inTransaction()) {
+      await session.abortTransaction();
+    }
+
+    const response: ApiResponse = {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to delete belt',
+    };
+    return NextResponse.json(response, { status: 500 });
+  } finally {
+    // End session
+    if (session) {
+      await session.endSession();
+    }
+  }
+}
+
+export const DELETE = (
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> | { id: string } }
+) => withRBACParams(request, context.params, Permission.BELT_DELETE, deleteBeltHandler);

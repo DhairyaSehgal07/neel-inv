@@ -48,6 +48,8 @@ interface UpdateCompoundBatchPayload {
   date?: string;
   batches?: number;
   weightPerBatch?: number;
+  skimCompoundProducedOn?: string;
+  coverCompoundProducedOn?: string;
 }
 
 async function updateCompoundBatchClient(
@@ -66,6 +68,23 @@ export function useUpdateCompoundBatchMutation() {
   return useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UpdateCompoundBatchPayload }) =>
       updateCompoundBatchClient(id, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compoundBatches'] });
+    },
+  });
+}
+
+async function deleteCompoundBatchClient(id: string): Promise<void> {
+  const response = await api.delete<ApiResponse<void>>(`/api/compounds/batches/${id}`);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to delete compound batch');
+  }
+}
+
+export function useDeleteCompoundBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteCompoundBatchClient,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['compoundBatches'] });
     },

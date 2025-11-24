@@ -12,6 +12,7 @@ import {
   isDuplicateKeyErrorForField,
   getRandomBatchCount,
 } from '@/lib/helpers/compound-utils';
+import { roundTo2Decimals } from '@/lib/utils';
 
 export interface BatchUsage {
   batchId: mongoose.Types.ObjectId;
@@ -93,7 +94,7 @@ export async function generateCompoundBatch(
 
   // Pick batchCount randomly between 80 and 90
   const batches = getRandomBatchCount();
-  const totalInventory = batches * weightPerBatch;
+  const totalInventory = roundTo2Decimals(batches * weightPerBatch);
 
   // Find next free date (global uniqueness)
   let dateToUse = await findNextFreeDate(preferredDate, session);
@@ -187,7 +188,7 @@ export async function consumeCompound(
     }
 
     // Determine how much to take from this batch
-    const toConsume = Math.min(remaining, batch.inventoryRemaining);
+    const toConsume = roundTo2Decimals(Math.min(remaining, batch.inventoryRemaining));
 
     // Atomically update batch with retry logic
     let updated: CompoundBatchDoc | null = null;
@@ -246,7 +247,7 @@ export async function consumeCompound(
 
         if (refetched && refetched.inventoryRemaining > 0) {
           // Update currentToConsume based on new inventory
-          currentToConsume = Math.min(remaining, refetched.inventoryRemaining);
+          currentToConsume = roundTo2Decimals(Math.min(remaining, refetched.inventoryRemaining));
           currentBatch = refetched;
           retryCount++;
           // Small delay before retry
@@ -293,13 +294,104 @@ export async function consumeCompound(
 
     batchesUsed.push({
       batchId: updated._id as mongoose.Types.ObjectId,
-      consumedKg: currentToConsume,
+      consumedKg: roundTo2Decimals(currentToConsume),
     });
-    remaining -= currentToConsume;
+    remaining = roundTo2Decimals(remaining - currentToConsume);
   }
 
   return {
     totalConsumed: requiredKg,
     batchesUsed,
   };
+}
+
+/**
+ * Revert compound consumption - return stock back to batches
+ * This is used when a belt is updated and quantities change
+ */
+export async function revertCompoundConsumption(
+  batchesUsed: Array<{ batchId: mongoose.Types.ObjectId; consumedKg: number }>,
+  session?: ClientSession
+): Promise<void> {
+  for (const usage of batchesUsed) {
+    const updateQuery = CompoundBatch.findByIdAndUpdate(
+      usage.batchId,
+      {
+        $inc: {
+          inventoryRemaining: usage.consumedKg,
+          consumed: -usage.consumedKg,
+        },
+      },
+      { new: true }
+    );
+
+    if (session) {
+      updateQuery.session(session);
+    }
+
+    const updated = await updateQuery.exec();
+    if (!updated) {
+      throw new Error(`Failed to revert consumption for batch ${usage.batchId}`);
+    }
+  }
+}
+
+/**
+ * Find all belts that use a specific compound batch
+ */
+export async function findBeltsUsingBatch(
+  batchId: mongoose.Types.ObjectId,
+  session?: ClientSession
+): Promise<Array<{ belt: import('@/model/Belt').BeltDoc; batchUsage: { batchId: mongoose.Types.ObjectId; consumedKg: number }; isCover: boolean }>> {
+  const Belt = (await import('@/model/Belt')).default;
+
+  const query = Belt.find({
+    $or: [
+      { 'coverBatchesUsed.batchId': batchId },
+      { 'skimBatchesUsed.batchId': batchId },
+    ],
+  }).sort({ createdAt: 1 });
+
+  if (session) {
+    query.session(session);
+  }
+
+  const belts = await query.exec();
+  const result: Array<{ belt: import('@/model/Belt').BeltDoc; batchUsage: { batchId: mongoose.Types.ObjectId; consumedKg: number }; isCover: boolean }> = [];
+
+  for (const belt of belts) {
+    // Check cover batches
+    if (belt.coverBatchesUsed) {
+      for (const usage of belt.coverBatchesUsed) {
+        if (usage.batchId && usage.batchId.toString() === batchId.toString()) {
+          result.push({
+            belt,
+            batchUsage: {
+              batchId: usage.batchId as mongoose.Types.ObjectId,
+              consumedKg: usage.consumedKg,
+            },
+            isCover: true,
+          });
+        }
+      }
+    }
+
+    // Check skim batches
+    if (belt.skimBatchesUsed) {
+      for (const usage of belt.skimBatchesUsed) {
+        if (usage.batchId && usage.batchId.toString() === batchId.toString()) {
+          result.push({
+            belt,
+            batchUsage: {
+              batchId: usage.batchId as mongoose.Types.ObjectId,
+              consumedKg: usage.consumedKg,
+            },
+            isCover: false,
+          });
+        }
+      }
+    }
+  }
+
+  return result;
 }

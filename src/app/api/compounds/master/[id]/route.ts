@@ -5,6 +5,7 @@ import { ApiResponse } from '@/types/apiResponse';
 import { withRBACParams } from '@/lib/rbac/rbac-params';
 import { Permission } from '@/lib/rbac/permissions';
 import mongoose from 'mongoose';
+import { roundTo2Decimals } from '@/lib/utils';
 
 // GET /api/compounds/master/[id] - Get single compound master by ID
 async function getCompoundMaster(
@@ -123,10 +124,16 @@ async function updateCompoundMaster(
       }
     }
 
+    // Prepare update data with rounded defaultWeightPerBatch if provided
+    const updateData = { ...body };
+    if (body.defaultWeightPerBatch !== undefined) {
+      updateData.defaultWeightPerBatch = roundTo2Decimals(body.defaultWeightPerBatch);
+    }
+
     // Update compound master
     const updatedCompound = await CompoundMaster.findByIdAndUpdate(
       id,
-      { $set: body },
+      { $set: updateData },
       { new: true, runValidators: true }
     );
 

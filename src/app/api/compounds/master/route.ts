@@ -4,6 +4,7 @@ import CompoundMaster from '@/model/CompoundMaster';
 import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
 import { Permission } from '@/lib/rbac/permissions';
+import { roundTo2Decimals } from '@/lib/utils';
 
 // GET /api/compounds/type - Get all compound masters
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -78,7 +79,7 @@ async function createCompoundMaster(request: NextRequest) {
       compoundCode,
       compoundName,
       category,
-      defaultWeightPerBatch,
+      defaultWeightPerBatch: roundTo2Decimals(defaultWeightPerBatch),
     });
 
     const response: ApiResponse = {
