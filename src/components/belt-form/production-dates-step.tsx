@@ -14,7 +14,6 @@ import { Input } from '@/components/ui/input';
 import { DatePicker } from '../ui/date-picker';
 import {
   process_dates_from_dispatch,
-  getSeparateCompoundDates,
   validateDateRelationships,
 } from '@/lib/helpers/calculations';
 import { useWatch } from 'react-hook-form';
@@ -42,52 +41,67 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
   const coverCompoundProducedOn = useWatch({ control, name: 'coverCompoundProducedOn' });
   const skimCompoundProducedOn = useWatch({ control, name: 'skimCompoundProducedOn' });
 
+  // Helper function to convert Date to YYYY-MM-DD using local timezone (not UTC)
+  const toLocalDateString = (date: Date | string): string => {
+    if (typeof date === 'string') return date;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Auto-calculate dates when dispatch date changes
   // Recalculate dependent dates unless they were manually edited
   useEffect(() => {
     if (dispatchDate) {
-      // Convert date to ISO string if it's a Date object
-      const dispatchDateIso =
-        dispatchDate instanceof Date ? dispatchDate.toISOString().split('T')[0] : dispatchDate;
+      // Convert date to ISO string if it's a Date object (using local timezone, not UTC)
+      const dispatchDateIso = dispatchDate instanceof Date
+        ? toLocalDateString(dispatchDate)
+        : dispatchDate;
+
+      console.log('[Production Dates] Dispatch date selected:', dispatchDate);
+      console.log('[Production Dates] Converted to local date string:', dispatchDateIso);
 
       // Calculate all production dates based on dispatch date
       const dates = process_dates_from_dispatch(dispatchDateIso);
 
       console.log('all calculated dates are: ', dates);
 
-      // Only set dates that haven't been manually edited
-      if (!manuallyEditedRef.current.has('packagingDate') && dates.packaging_date) {
-        setValue('packagingDate', new Date(dates.packaging_date));
-      }
-      if (!manuallyEditedRef.current.has('pdiDate') && dates.pdi_date) {
-        setValue('pdiDate', new Date(dates.pdi_date));
-      }
-      if (!manuallyEditedRef.current.has('inspectionDate') && dates.internal_inspection_date) {
-        setValue('inspectionDate', new Date(dates.internal_inspection_date));
-      }
-      if (!manuallyEditedRef.current.has('curingDate') && dates.curing_date) {
-        setValue('curingDate', new Date(dates.curing_date));
-      }
-      if (!manuallyEditedRef.current.has('greenBeltDate') && dates.green_belt_date) {
-        setValue('greenBeltDate', new Date(dates.green_belt_date));
-      }
-      if (!manuallyEditedRef.current.has('calendaringDate') && dates.calendaring_date) {
-        setValue('calendaringDate', new Date(dates.calendaring_date));
-      }
+      // Type guard: check if dates object has the expected properties
+      if ('packaging_date' in dates) {
+        // Only set dates that haven't been manually edited
+        if (!manuallyEditedRef.current.has('packagingDate') && dates.packaging_date) {
+          setValue('packagingDate', new Date(dates.packaging_date));
+        }
+        if (!manuallyEditedRef.current.has('pdiDate') && dates.pdi_date) {
+          setValue('pdiDate', new Date(dates.pdi_date));
+        }
+        if (!manuallyEditedRef.current.has('inspectionDate') && dates.internal_inspection_date) {
+          setValue('inspectionDate', new Date(dates.internal_inspection_date));
+        }
+        if (!manuallyEditedRef.current.has('curingDate') && dates.curing_date) {
+          setValue('curingDate', new Date(dates.curing_date));
+        }
+        if (!manuallyEditedRef.current.has('greenBeltDate') && dates.green_belt_date) {
+          setValue('greenBeltDate', new Date(dates.green_belt_date));
+        }
+        if (!manuallyEditedRef.current.has('calendaringDate') && dates.calendaring_date) {
+          setValue('calendaringDate', new Date(dates.calendaring_date));
+        }
 
-      // Get separate compound dates
-      const compoundDates = getSeparateCompoundDates(dates.compound_date);
-      if (
-        !manuallyEditedRef.current.has('coverCompoundProducedOn') &&
-        compoundDates.cover_compound_date
-      ) {
-        setValue('coverCompoundProducedOn', new Date(compoundDates.cover_compound_date));
-      }
-      if (
-        !manuallyEditedRef.current.has('skimCompoundProducedOn') &&
-        compoundDates.skim_compound_date
-      ) {
-        setValue('skimCompoundProducedOn', new Date(compoundDates.skim_compound_date));
+        // Set compound dates (both calculated from calendaring date, 7-10 working days before)
+        if (
+          !manuallyEditedRef.current.has('coverCompoundProducedOn') &&
+          dates.cover_compound_date
+        ) {
+          setValue('coverCompoundProducedOn', new Date(dates.cover_compound_date));
+        }
+        if (
+          !manuallyEditedRef.current.has('skimCompoundProducedOn') &&
+          dates.skim_compound_date
+        ) {
+          setValue('skimCompoundProducedOn', new Date(dates.skim_compound_date));
+        }
       }
     }
   }, [dispatchDate, setValue]);

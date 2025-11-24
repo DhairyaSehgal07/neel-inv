@@ -250,6 +250,9 @@ export function randomBetween(min: number, max: number): number {
  *
  * All returned as ISO date strings (YYYY-MM-DD).
  */
+/**
+ * Convert a Date to YYYY-MM-DD format using local timezone (not UTC)
+ */
 function toISODateOnly(d: Date) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -257,59 +260,126 @@ function toISODateOnly(d: Date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-export function process_dates_from_dispatch(dispatchDateIso?: string) {
-  if (!dispatchDateIso) return {};
-  const dispatch = new Date(dispatchDateIso);
+/**
+ * Parse a date string (YYYY-MM-DD) as a local date (not UTC)
+ * This prevents timezone shifts when parsing date-only strings
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // Create date in local timezone (month is 0-indexed in Date constructor)
+  return new Date(year, month - 1, day);
+}
+
+export type ProcessDatesResult = {
+  dispatch_date: string;
+  packaging_date: string;
+  pdi_date: string;
+  internal_inspection_date: string;
+  curing_date: string;
+  green_belt_date: string;
+  calendaring_date: string;
+  cover_compound_date: string;
+  skim_compound_date: string;
+};
+
+export function process_dates_from_dispatch(dispatchDateIso?: string): ProcessDatesResult | Record<string, never> {
+  if (!dispatchDateIso) {
+    console.log('[Date Calculation] No dispatch date provided, returning empty object');
+    return {};
+  }
+
+  console.log('[Date Calculation] Starting date calculation from dispatch date:', dispatchDateIso);
+  const dispatch = parseLocalDate(dispatchDateIso);
+  console.log('[Date Calculation] Parsed dispatch date:', toISODateOnly(dispatch));
 
   // Helper function to generate a date offset by days from a base date,
   // skipping Sundays and holidays (going backwards in time)
-  const dateMinusDaysSkippingHolidaysAndSundays = (baseDate: Date, days: number): Date => {
+  const dateMinusDaysSkippingHolidaysAndSundays = (baseDate: Date, days: number, stepName?: string): Date => {
     const result = new Date(baseDate);
     let daysRemaining = days;
+    let skippedDays = 0;
+
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Starting from ${toISODateOnly(baseDate)}, going back ${days} working day(s)`);
 
     while (daysRemaining > 0) {
       result.setDate(result.getDate() - 1);
       if (!isWeekendOrHoliday(result)) {
         daysRemaining--;
+      } else {
+        skippedDays++;
+        const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+        console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipping ${toISODateOnly(result)} (${reason})`);
       }
     }
 
+    if (skippedDays > 0) {
+      console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipped ${skippedDays} non-working day(s)`);
+    }
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Calculated date: ${toISODateOnly(result)}`);
     return result;
   };
 
   // 1. Dispatch Date (input)
   // dispatch is already set
+  console.log('[Date Calculation] Step 1: Dispatch Date =', toISODateOnly(dispatch));
 
   // 2. Packaging: D − 1 day (fixed)
-  const packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1);
+  const packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+  console.log('[Date Calculation] Step 2: Packaging Date =', toISODateOnly(packaging));
 
   // 3. PDI: D − 4 to D − 5 days (random in range)
   const pdiOffset = randomBetween(4, 5);
-  const pdi = dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset);
+  console.log('[Date Calculation] Step 3: PDI - Random offset selected:', pdiOffset, 'working days');
+  const pdi = dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset, 'PDI');
+  console.log('[Date Calculation] Step 3: PDI Date =', toISODateOnly(pdi));
 
   // 4. Internal Inspection: PDI − 4 to PDI − 10 days (random in range)
   const internalInspectionOffset = randomBetween(4, 10);
-  const internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, internalInspectionOffset);
+  console.log('[Date Calculation] Step 4: Internal Inspection - Random offset selected:', internalInspectionOffset, 'working days');
+  const internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, internalInspectionOffset, 'Internal Inspection');
+  console.log('[Date Calculation] Step 4: Internal Inspection Date =', toISODateOnly(internalInspection));
 
   // 5. Curing: Internal Inspection − 2 days (fixed)
-  const curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2);
+  const curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2, 'Curing');
+  console.log('[Date Calculation] Step 5: Curing Date =', toISODateOnly(curing));
 
   // 6. Green Belt: Curing − 1 day (fixed)
-  const greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1);
+  const greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+  console.log('[Date Calculation] Step 6: Green Belt Date =', toISODateOnly(greenBelt));
 
   // 7. Calendaring: Green Belt (same day) or Green Belt − 1 day (random)
   // Random: 0 or 1 day before green belt
   const calendaringOffset = randomBetween(0, 1);
+  console.log('[Date Calculation] Step 7: Calendaring - Random offset selected:', calendaringOffset === 0 ? 'same day' : '1 day before');
   const calendaring =
     calendaringOffset === 0
       ? new Date(greenBelt) // Same day
-      : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1); // 1 day before
+      : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring'); // 1 day before
+  console.log('[Date Calculation] Step 7: Calendaring Date =', toISODateOnly(calendaring));
 
-  // 8. Compound: Calendaring − 2 to Calendaring − 7 days (random in range)
-  const compoundOffset = randomBetween(2, 7);
-  const compound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, compoundOffset);
+  // 8. Cover Compound: Calendaring − 7 to Calendaring − 10 days (random in range)
+  const coverCompoundOffset = randomBetween(7, 10);
+  console.log('[Date Calculation] Step 8: Cover Compound - Random offset selected:', coverCompoundOffset, 'working days');
+  const coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+  console.log('[Date Calculation] Step 8: Cover Compound Date =', toISODateOnly(coverCompound));
 
-  return {
+  // 9. Skim Compound: Calendaring − 7 to Calendaring − 10 days (random in range)
+  // Must be on a different date than cover compound
+  const skimCompoundOffset = randomBetween(7, 10);
+  console.log('[Date Calculation] Step 9: Skim Compound - Initial random offset selected:', skimCompoundOffset, 'working days');
+  let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+
+  // Ensure skim compound is on a different date than cover compound
+  if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+    console.log('[Date Calculation] Step 9: Skim compound date matches cover compound date, adjusting...');
+    // Move skim compound back by 1 working day
+    skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+    console.log('[Date Calculation] Step 9: Skim Compound Date (adjusted) =', toISODateOnly(skimCompound));
+  } else {
+    console.log('[Date Calculation] Step 9: Skim Compound Date =', toISODateOnly(skimCompound));
+  }
+
+  const result = {
     dispatch_date: toISODateOnly(dispatch),
     packaging_date: toISODateOnly(packaging),
     pdi_date: toISODateOnly(pdi),
@@ -317,8 +387,12 @@ export function process_dates_from_dispatch(dispatchDateIso?: string) {
     curing_date: toISODateOnly(curing),
     green_belt_date: toISODateOnly(greenBelt),
     calendaring_date: toISODateOnly(calendaring),
-    compound_date: toISODateOnly(compound),
+    cover_compound_date: toISODateOnly(coverCompound),
+    skim_compound_date: toISODateOnly(skimCompound),
   };
+
+  console.log('[Date Calculation] Final calculated dates:', result);
+  return result;
 }
 
 /**
@@ -331,24 +405,41 @@ export function getSeparateCompoundDates(baseCompoundDate?: string): {
   cover_compound_date?: string;
   skim_compound_date?: string;
 } {
-  if (!baseCompoundDate) return {};
+  if (!baseCompoundDate) {
+    console.log('[Separate Compound Dates] No base compound date provided, returning empty object');
+    return {};
+  }
 
-  const baseDate = new Date(baseCompoundDate);
+  console.log('[Separate Compound Dates] Starting calculation from base compound date:', baseCompoundDate);
+  const baseDate = parseLocalDate(baseCompoundDate);
   const coverDate = new Date(baseDate);
+  console.log('[Separate Compound Dates] Cover compound date (same as base):', toISODateOnly(coverDate));
 
   // Get the previous working day for skim compound (ensuring different day)
   const skimDate = new Date(baseDate);
   skimDate.setDate(skimDate.getDate() - 1);
+  console.log('[Separate Compound Dates] Initial skim date (1 day before):', toISODateOnly(skimDate));
 
   // Skip weekends and holidays to find the previous working day
+  let skippedCount = 0;
   while (isWeekendOrHoliday(skimDate)) {
+    const reason = isSunday(skimDate) ? 'Sunday' : 'Holiday';
+    console.log(`[Separate Compound Dates] Skipping ${toISODateOnly(skimDate)} (${reason}), going back one more day`);
     skimDate.setDate(skimDate.getDate() - 1);
+    skippedCount++;
   }
 
-  return {
+  if (skippedCount > 0) {
+    console.log(`[Separate Compound Dates] Skipped ${skippedCount} non-working day(s) for skim compound`);
+  }
+
+  const result = {
     cover_compound_date: toISODateOnly(coverDate),
     skim_compound_date: toISODateOnly(skimDate),
   };
+
+  console.log('[Separate Compound Dates] Final dates:', result);
+  return result;
 }
 
 /**
@@ -365,11 +456,18 @@ export function countWorkingDays(startDate: Date, endDate: Date): number {
   start.setHours(0, 0, 0, 0);
   end.setHours(0, 0, 0, 0);
 
-  if (start.getTime() === end.getTime()) return 0;
+  console.log('[Count Working Days] Counting between', toISODateOnly(start), 'and', toISODateOnly(end));
+
+  if (start.getTime() === end.getTime()) {
+    console.log('[Count Working Days] Same date, returning 0');
+    return 0;
+  }
 
   let count = 0;
   const current = new Date(start);
   const direction = end >= start ? 1 : -1;
+  const directionStr = direction === 1 ? 'forward' : 'backward';
+  console.log('[Count Working Days] Direction:', directionStr);
 
   // Move to the next/previous day first
   current.setDate(current.getDate() + direction);
@@ -378,10 +476,14 @@ export function countWorkingDays(startDate: Date, endDate: Date): number {
   while (current.getTime() !== end.getTime()) {
     if (!isWeekendOrHoliday(current)) {
       count++;
+    } else {
+      const reason = isSunday(current) ? 'Sunday' : 'Holiday';
+      console.log(`[Count Working Days] Skipping ${toISODateOnly(current)} (${reason})`);
     }
     current.setDate(current.getDate() + direction);
   }
 
+  console.log('[Count Working Days] Total working days:', count);
   return count;
 }
 
@@ -389,11 +491,22 @@ export function countWorkingDays(startDate: Date, endDate: Date): number {
  * Get the previous working day (skipping Sundays and holidays)
  */
 export function getPreviousWorkingDay(date: Date): Date {
+  console.log('[Get Previous Working Day] Starting from:', toISODateOnly(date));
   const result = new Date(date);
   result.setDate(result.getDate() - 1);
+  let skippedCount = 0;
+
   while (isWeekendOrHoliday(result)) {
+    const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+    console.log(`[Get Previous Working Day] Skipping ${toISODateOnly(result)} (${reason})`);
     result.setDate(result.getDate() - 1);
+    skippedCount++;
   }
+
+  if (skippedCount > 0) {
+    console.log(`[Get Previous Working Day] Skipped ${skippedCount} non-working day(s)`);
+  }
+  console.log('[Get Previous Working Day] Result:', toISODateOnly(result));
   return result;
 }
 
@@ -401,11 +514,22 @@ export function getPreviousWorkingDay(date: Date): Date {
  * Get the next working day (skipping Sundays and holidays)
  */
 export function getNextWorkingDay(date: Date): Date {
+  console.log('[Get Next Working Day] Starting from:', toISODateOnly(date));
   const result = new Date(date);
   result.setDate(result.getDate() + 1);
+  let skippedCount = 0;
+
   while (isWeekendOrHoliday(result)) {
+    const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+    console.log(`[Get Next Working Day] Skipping ${toISODateOnly(result)} (${reason})`);
     result.setDate(result.getDate() + 1);
+    skippedCount++;
   }
+
+  if (skippedCount > 0) {
+    console.log(`[Get Next Working Day] Skipped ${skippedCount} non-working day(s)`);
+  }
+  console.log('[Get Next Working Day] Result:', toISODateOnly(result));
   return result;
 }
 
@@ -516,28 +640,37 @@ export function validateDateRelationships(dates: {
     }
   }
 
-  // Validate Compound dates: cover and skim must be 2-7 working days before calendaring
+  // Validate Compound dates: cover and skim must be 7-10 working days before calendaring
   if (coverCompound && calendaring) {
     if (isWeekendOrHoliday(coverCompound)) {
       errors.coverCompoundProducedOn = 'Cover compound date must be a working day';
     } else {
       const days = countWorkingDays(coverCompound, calendaring);
-      if (days < 2 || days > 7) {
+      if (days < 7 || days > 10) {
         errors.coverCompoundProducedOn =
-          'Cover compound must be 2-7 working days before calendaring';
+          'Cover compound must be 7-10 working days before calendaring';
       }
     }
   }
 
-  if (skimCompound && coverCompound) {
+  if (skimCompound && calendaring) {
     if (isWeekendOrHoliday(skimCompound)) {
       errors.skimCompoundProducedOn = 'Skim compound date must be a working day';
     } else {
-      // Skim should be 1 working day before cover compound
-      const days = countWorkingDays(skimCompound, coverCompound);
-      if (days !== 1) {
-        errors.skimCompoundProducedOn = 'Skim compound must be 1 working day before cover compound';
+      // Skim should be 7-10 working days before calendaring
+      const days = countWorkingDays(skimCompound, calendaring);
+      if (days < 7 || days > 10) {
+        errors.skimCompoundProducedOn = 'Skim compound must be 7-10 working days before calendaring';
       }
+    }
+  }
+
+  // Validate that cover and skim compounds are on different dates
+  if (coverCompound && skimCompound) {
+    const coverDateStr = toISODateOnly(coverCompound);
+    const skimDateStr = toISODateOnly(skimCompound);
+    if (coverDateStr === skimDateStr) {
+      errors.skimCompoundProducedOn = 'Skim compound must be produced on a different date than cover compound';
     }
   }
 
