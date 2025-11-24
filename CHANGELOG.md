@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.8...v0.1.9) (2025-11-24)
+
+
+### Features
+
+* add RBAC enhancements, user seeding, and UI improvements ([225ff67](https://github.com/DhairyaSehgal07/neel-inv/commit/225ff67bd77e4f654b6392fd8d6466065cf877c8))
+* enhance belts table columns with additional belt specifications ([8d27a74](https://github.com/DhairyaSehgal07/neel-inv/commit/8d27a74e58ca1bc11c2c93bca2539f946ada88dd))
+
+
+### Bug Fixes
+
+* restrict compound calculation details display to admin users only ([ea7b234](https://github.com/DhairyaSehgal07/neel-inv/commit/ea7b234a340293b0921285f00df8250f5d6c364c))
+
 ### [0.1.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.8...v0.1.9) (2025-01-28)
 
 
