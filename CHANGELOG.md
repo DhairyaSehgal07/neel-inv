@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.9...v0.1.10) (2025-11-24)
+
+
+### Features
+
+* add delete functionality for belts and compound batches ([058254a](https://github.com/DhairyaSehgal07/neel-inv/commit/058254a0d4ed2703c6e716f89b40fb34152a4c28))
+
 ### [0.1.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.8...v0.1.9) (2025-11-24)
 
 
