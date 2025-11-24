@@ -4,11 +4,14 @@ import { ColumnDef } from '@tanstack/react-table';
 import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { DataTableRowActions } from './row-actions';
+import { FabricInfo } from '@/types/belt';
 
-export const columns: ColumnDef<BeltDoc>[] = [
+type BeltWithFabric = BeltDoc & { fabric?: FabricInfo };
+
+export const columns: ColumnDef<BeltWithFabric>[] = [
   {
     accessorKey: 'beltNumber',
-    header: 'Belt Number',
+    header: 'Belt No.',
     filterFn: (row, id, value) => {
       const searchValue = value?.toLowerCase() || '';
       const beltNumber = row.getValue(id)?.toString().toLowerCase() || '';
@@ -24,16 +27,64 @@ export const columns: ColumnDef<BeltDoc>[] = [
     },
   },
   {
+    accessorKey: 'beltWidthMm',
+    header: 'Width',
+    cell: ({ row }) => {
+      const width = row.original.beltWidthMm;
+      return width ? `${width} mm` : '-';
+    },
+  },
+  {
     accessorKey: 'rating',
-    header: 'Rating',
+    header: 'Belt Rating',
   },
   {
-    accessorKey: 'orderNumber',
-    header: 'Order Number',
+    id: 'fabricType',
+    header: 'Fabric Type',
+    cell: ({ row }) => {
+      const fabricType = row.original.fabric?.type;
+      return fabricType || '-';
+    },
   },
   {
-    accessorKey: 'buyerName',
-    header: 'Buyer Name',
+    accessorKey: 'topCoverMm',
+    header: 'Top',
+    cell: ({ row }) => {
+      const top = row.original.topCoverMm;
+      return top ? `${top} mm` : '-';
+    },
+  },
+  {
+    accessorKey: 'bottomCoverMm',
+    header: 'Bottom',
+    cell: ({ row }) => {
+      const bottom = row.original.bottomCoverMm;
+      return bottom ? `${bottom} mm` : '-';
+    },
+  },
+  {
+    accessorKey: 'coverGrade',
+    header: 'Cover Grade',
+    cell: ({ row }) => {
+      const coverGrade = row.original.coverGrade;
+      return coverGrade || '-';
+    },
+  },
+  {
+    accessorKey: 'edge',
+    header: 'Edge',
+    cell: ({ row }) => {
+      const edge = row.original.edge;
+      return edge || '-';
+    },
+  },
+  {
+    accessorKey: 'beltLengthM',
+    header: 'Length',
+    cell: ({ row }) => {
+      const length = row.original.beltLengthM;
+      return length ? `${length} m` : '-';
+    },
   },
   {
     accessorKey: 'status',
