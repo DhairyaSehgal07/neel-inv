@@ -193,7 +193,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
               {isAdmin && (<FormDescription>Calculated: thickness_mm × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
-              {coverCalculationValues && (
+              {isAdmin && coverCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">
                     Calculation Values:
@@ -238,7 +238,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
               {isAdmin && (<FormDescription>Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
-              {skimCalculationValues && (
+              {isAdmin && skimCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">
                     Calculation Values:
