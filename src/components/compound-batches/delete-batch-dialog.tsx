@@ -27,7 +27,12 @@ export default function DeleteBatchDialog({
 
   async function handleDelete() {
     try {
-      await deleteMutation.mutateAsync(batch._id.toString());
+      if (!batch._id) {
+        toast.error('Batch ID is missing');
+        return;
+      }
+      const batchId = typeof batch._id === 'string' ? batch._id : batch._id.toString();
+      await deleteMutation.mutateAsync(batchId);
       toast.success('Compound batch deleted successfully');
       onOpenChange(false);
     } catch (err) {

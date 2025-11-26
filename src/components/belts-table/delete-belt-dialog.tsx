@@ -28,7 +28,12 @@ export default function DeleteBeltDialog({
 
   async function handleDelete() {
     try {
-      await deleteMutation.mutateAsync(belt._id.toString());
+      if (!belt._id) {
+        toast.error('Belt ID is missing');
+        return;
+      }
+      const beltId = typeof belt._id === 'string' ? belt._id : belt._id.toString();
+      await deleteMutation.mutateAsync(beltId);
       toast.success('Belt deleted successfully');
       onOpenChange(false);
     } catch (err) {
