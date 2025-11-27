@@ -5,6 +5,7 @@ import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { FabricInfo } from '@/types/belt';
+import { useSession } from 'next-auth/react';
 
 interface BeltDetailsDialogProps {
   open: boolean;
@@ -26,6 +27,9 @@ const DetailRow = ({
 );
 
 export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDetailsDialogProps) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'Admin';
+
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     try {
@@ -91,17 +95,17 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
           <div>
             <h3 className="text-lg font-semibold mb-4">Belt Specifications</h3>
             <div className="space-y-1">
-              <DetailRow label="Length" value={belt.beltLengthM ? `${belt.beltLengthM} m` : '-'} />
-              <DetailRow label="Width" value={belt.beltWidthMm ? `${belt.beltWidthMm} mm` : '-'} />
+              <DetailRow label="Length" value={belt.beltLengthM ? `${Number(belt.beltLengthM).toFixed(2)} m` : '-'} />
+              <DetailRow label="Width" value={belt.beltWidthMm ? `${Number(belt.beltWidthMm).toFixed(2)} mm` : '-'} />
               <DetailRow
                 label="Top Cover"
-                value={belt.topCoverMm ? `${belt.topCoverMm} mm` : '-'}
+                value={belt.topCoverMm ? `${Number(belt.topCoverMm).toFixed(2)} mm` : '-'}
               />
               <DetailRow
                 label="Bottom Cover"
-                value={belt.bottomCoverMm ? `${belt.bottomCoverMm} mm` : '-'}
+                value={belt.bottomCoverMm ? `${Number(belt.bottomCoverMm).toFixed(2)} mm` : '-'}
               />
-              <DetailRow label="Carcass" value={belt.carcassMm ? `${belt.carcassMm} mm` : '-'} />
+              <DetailRow label="Carcass" value={belt.carcassMm ? `${Number(belt.carcassMm).toFixed(2)} mm` : '-'} />
             </div>
           </div>
 
@@ -113,8 +117,12 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
             <div className="space-y-1">
               <DetailRow label="Order Number" value={belt.orderNumber || '-'} />
               <DetailRow label="Buyer Name" value={belt.buyerName || '-'} />
-              <DetailRow label="Order Date" value={formatDate(belt.orderDate)} />
-              <DetailRow label="Delivery Deadline" value={formatDate(belt.deliveryDeadline)} />
+              {isAdmin && (
+                <>
+                  <DetailRow label="Order Date" value={formatDate(belt.orderDate)} />
+                  <DetailRow label="Delivery Deadline" value={formatDate(belt.deliveryDeadline)} />
+                </>
+              )}
             </div>
           </div>
 
@@ -252,7 +260,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                               </>
                             )}
                             <span className="text-muted-foreground">Consumed:</span>
-                            <span>{batch.consumedKg} kg</span>
+                            <span>{Number(batch.consumedKg).toFixed(2)} kg</span>
                           </div>
                         </div>
                       ))}
@@ -297,7 +305,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                               </>
                             )}
                             <span className="text-muted-foreground">Consumed:</span>
-                            <span>{batch.consumedKg} kg</span>
+                            <span>{Number(batch.consumedKg).toFixed(2)} kg</span>
                           </div>
                         </div>
                       ))}
@@ -328,7 +336,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                     label="Consumed Meters"
                     value={
                       belt.fabric.consumedMeters !== undefined
-                        ? `${belt.fabric.consumedMeters} m`
+                        ? `${Number(belt.fabric.consumedMeters).toFixed(2)} m`
                         : '-'
                     }
                   />

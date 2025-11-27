@@ -31,7 +31,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Width',
     cell: ({ row }) => {
       const width = row.original.beltWidthMm;
-      return width ? `${width} mm` : '-';
+      return width ? `${Number(width).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -51,7 +51,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Top',
     cell: ({ row }) => {
       const top = row.original.topCoverMm;
-      return top ? `${top} mm` : '-';
+      return top ? `${Number(top).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -59,7 +59,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Bottom',
     cell: ({ row }) => {
       const bottom = row.original.bottomCoverMm;
-      return bottom ? `${bottom} mm` : '-';
+      return bottom ? `${Number(bottom).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -83,7 +83,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Length',
     cell: ({ row }) => {
       const length = row.original.beltLengthM;
-      return length ? `${length} m` : '-';
+      return length ? `${Number(length).toFixed(2)} m` : '-';
     },
   },
   {

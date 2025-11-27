@@ -80,28 +80,28 @@ export const columns: ColumnDef<CompoundBatchDoc>[] = [
     accessorKey: 'weightPerBatch',
     header: 'Weight/Batch (kg)',
     cell: ({ row }) => {
-      return `${row.original.weightPerBatch} kg`;
+      return `${Number(row.original.weightPerBatch).toFixed(2)} kg`;
     },
   },
   {
     accessorKey: 'totalInventory',
     header: 'Total Inventory (kg)',
     cell: ({ row }) => {
-      return `${row.original.totalInventory} kg`;
+      return `${Number(row.original.totalInventory).toFixed(2)} kg`;
     },
   },
   {
     accessorKey: 'inventoryRemaining',
     header: 'Remaining (kg)',
     cell: ({ row }) => {
-      return `${row.original.inventoryRemaining} kg`;
+      return `${Number(row.original.inventoryRemaining).toFixed(2)} kg`;
     },
   },
   {
     accessorKey: 'consumed',
     header: 'Consumed (kg)',
     cell: ({ row }) => {
-      return `${row.original.consumed} kg`;
+      return `${Number(row.original.consumed).toFixed(2)} kg`;
     },
   },
   {
