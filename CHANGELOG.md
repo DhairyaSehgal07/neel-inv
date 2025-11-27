@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.10](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.9...v0.1.10) (2025-01-28)
+
+
+### Bug Fixes
+
+* improve number formatting with 2 decimal places in belt details dialog and tables ([fc291ec](https://github.com/DhairyaSehgal07/neel-inv/commit/fc291ec))
+* add RBAC protection to hide order date and delivery deadline from non-admin users in belt details dialog ([fc291ec](https://github.com/DhairyaSehgal07/neel-inv/commit/fc291ec))
+
 ### [0.1.9](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.8...v0.1.9) (2025-11-24)
 
 
