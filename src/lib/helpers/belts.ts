@@ -103,38 +103,49 @@ export interface Belt {
  */
 export const FABRIC_LOOKUP: FabricLookupItem[] = [
   { rating: '200/2', strength: 100 },
-  { rating: '250/2', strength: 125 },
   { rating: '315/3', strength: 100 },
-  { rating: '400/3', strength: 125 },
-  { rating: '500/3', strength: 160 },
-  { rating: '630/3', strength: 200 },
   { rating: '400/4', strength: 100 },
-  { rating: '500/4', strength: 125 },
-  { rating: '630/4', strength: 160 },
-  { rating: '800/4', strength: 200 },
-  { rating: '1000/4', strength: 250 },
-  { rating: '1250/4', strength: 315 },
-  { rating: '1400/4', strength: 350 },
-  { rating: '1250/5', strength: 250 },
-  { rating: '1400/5', strength: 350 },
-  { rating: '1600/5', strength: 315 },
-  { rating: '1800/5', strength: 350 },
-  { rating: '2000/5', strength: 400 },
-  { rating: '600/3', strength: 200 },
-  { rating: '1050/3', strength: 350 },
-  { rating: '400/2', strength: 200 },
-  { rating: '700/2', strength: 350 },
-  { rating: '600/2', strength: 300 },
-  { rating: '300/2', strength: 150 },
-  { rating: '800/2', strength: 400 },
-  { rating: '750/3', strength: 250 },
-  { rating: '450/3', strength: 150 },
   { rating: '300/3', strength: 100 },
+
+  { rating: '250/2', strength: 125 },
+  { rating: '400/3', strength: 125 },
+  { rating: '500/4', strength: 125 },
+
+  { rating: '450/3', strength: 150 },
+  { rating: '300/2', strength: 150 },
+
+  { rating: '500/3', strength: 160 },
+  { rating: '630/4', strength: 160 },
   { rating: '650/4', strength: 160 },
   { rating: '480/3', strength: 160 },
-  { rating: '1600/4', strength: 400 },
+
+  { rating: '630/3', strength: 200 },
+  { rating: '800/4', strength: 200 },
+  { rating: '600/3', strength: 200 },
+  { rating: '400/2', strength: 200 },
+
+  { rating: '750/3', strength: 250 },
+  { rating: '1000/4', strength: 250 },
+  { rating: '1250/5', strength: 250 },
   { rating: '500/2', strength: 250 },
+
+  { rating: '600/2', strength: 300 },
+
+  { rating: '1250/4', strength: 315 },
+  { rating: '1600/5', strength: 315 },
+
+  { rating: '1750/5', strength: 350 },
+  { rating: '1400/4', strength: 350 },
+  { rating: '1400/5', strength: 350 },
+  { rating: '1800/5', strength: 350 },
+  { rating: '1050/3', strength: 350 },
+  { rating: '700/2', strength: 350 },
+
+  { rating: '800/2', strength: 400 },
+  { rating: '2000/5', strength: 400 },
+  { rating: '1600/4', strength: 400 },
 ];
+
 
 /**
  * Available compound types
