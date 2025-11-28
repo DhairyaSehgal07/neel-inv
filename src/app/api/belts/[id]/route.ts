@@ -9,6 +9,9 @@ import Belt from '@/model/Belt';
 import { BeltFormData } from '@/types/belt';
 import { formatLocalDate } from '@/lib/helpers/compound-utils';
 import Fabric from '@/model/Fabric';
+import CompoundBatch from '@/model/CompoundBatch';
+import CompoundHistory from '@/model/CompoundHistory';
+import BeltHistory from '@/model/BeltHistory';
 
 /**
  * Update belt handler
@@ -251,13 +254,157 @@ async function updateBeltHandler(
       return NextResponse.json(response, { status: 404 });
     }
 
+    // Handle date updates in related models
+    const coverProducedOnDate = formData.coverCompoundProducedOn !== undefined
+      ? (formData.coverCompoundProducedOn
+          ? formatLocalDate(formData.coverCompoundProducedOn instanceof Date ? formData.coverCompoundProducedOn : new Date(formData.coverCompoundProducedOn))
+          : undefined)
+      : undefined;
+
+    const skimProducedOnDate = formData.skimCompoundProducedOn !== undefined
+      ? (formData.skimCompoundProducedOn
+          ? formatLocalDate(formData.skimCompoundProducedOn instanceof Date ? formData.skimCompoundProducedOn : new Date(formData.skimCompoundProducedOn))
+          : undefined)
+      : undefined;
+
+    // Update CompoundBatch and CompoundHistory if dates are being updated
+    if (coverProducedOnDate !== undefined || skimProducedOnDate !== undefined) {
+      // Collect batch IDs separately for cover and skim batches
+      const coverBatchIds: mongoose.Types.ObjectId[] = [];
+      const skimBatchIds: mongoose.Types.ObjectId[] = [];
+
+      if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed && updatedBelt.coverBatchesUsed.length > 0) {
+        updatedBelt.coverBatchesUsed.forEach((batch) => {
+          if (batch.batchId) {
+            coverBatchIds.push(batch.batchId as mongoose.Types.ObjectId);
+          }
+        });
+      }
+
+      if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed && updatedBelt.skimBatchesUsed.length > 0) {
+        updatedBelt.skimBatchesUsed.forEach((batch) => {
+          if (batch.batchId) {
+            skimBatchIds.push(batch.batchId as mongoose.Types.ObjectId);
+          }
+        });
+      }
+
+      // Update cover batches if coverCompoundProducedOn is being updated
+      if (coverProducedOnDate !== undefined && coverBatchIds.length > 0) {
+        const coverBatchUpdate = {
+          $set: {
+            coverCompoundProducedOn: coverProducedOnDate,
+          },
+        };
+
+        // Update CompoundBatch records
+        await CompoundBatch.updateMany(
+          { _id: { $in: coverBatchIds } },
+          coverBatchUpdate,
+          { session }
+        );
+
+        // Update CompoundHistory records for these batches
+        await CompoundHistory.updateMany(
+          { batchId: { $in: coverBatchIds } },
+          coverBatchUpdate,
+          { session }
+        );
+      }
+
+      // Update skim batches if skimCompoundProducedOn is being updated
+      if (skimProducedOnDate !== undefined && skimBatchIds.length > 0) {
+        const skimBatchUpdate = {
+          $set: {
+            skimCompoundProducedOn: skimProducedOnDate,
+          },
+        };
+
+        // Update CompoundBatch records
+        await CompoundBatch.updateMany(
+          { _id: { $in: skimBatchIds } },
+          skimBatchUpdate,
+          { session }
+        );
+
+        // Update CompoundHistory records for these batches
+        await CompoundHistory.updateMany(
+          { batchId: { $in: skimBatchIds } },
+          skimBatchUpdate,
+          { session }
+        );
+      }
+
+      // Update BatchUsage arrays in the belt if dates are provided
+      if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed) {
+        updatedBelt.coverBatchesUsed = updatedBelt.coverBatchesUsed.map((batch) => ({
+          ...batch,
+          coverCompoundProducedOn: coverProducedOnDate,
+        }));
+      }
+
+      if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed) {
+        updatedBelt.skimBatchesUsed = updatedBelt.skimBatchesUsed.map((batch) => ({
+          ...batch,
+          skimCompoundProducedOn: skimProducedOnDate,
+        }));
+      }
+
+      // Update the belt with the modified BatchUsage arrays
+      if (coverProducedOnDate !== undefined || skimProducedOnDate !== undefined) {
+        const batchUsageUpdate: {
+          coverBatchesUsed?: typeof updatedBelt.coverBatchesUsed;
+          skimBatchesUsed?: typeof updatedBelt.skimBatchesUsed;
+        } = {};
+
+        if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed) {
+          batchUsageUpdate.coverBatchesUsed = updatedBelt.coverBatchesUsed;
+        }
+
+        if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed) {
+          batchUsageUpdate.skimBatchesUsed = updatedBelt.skimBatchesUsed;
+        }
+
+        if (Object.keys(batchUsageUpdate).length > 0) {
+          const beltAfterBatchUpdate = await Belt.findByIdAndUpdate(
+            id,
+            { $set: batchUsageUpdate },
+            { new: true, session }
+          );
+
+          // Update the reference to use the latest belt data
+          if (beltAfterBatchUpdate) {
+            updatedBelt.coverBatchesUsed = beltAfterBatchUpdate.coverBatchesUsed;
+            updatedBelt.skimBatchesUsed = beltAfterBatchUpdate.skimBatchesUsed;
+          }
+        }
+      }
+    }
+
+    // Refetch the belt to get the latest data including any BatchUsage updates
+    const finalBelt = await Belt.findById(id).session(session);
+
+    // Create BeltHistory snapshot for this update
+    if (finalBelt) {
+      const historyData = {
+        beltId: finalBelt._id,
+        beltNumber: finalBelt.beltNumber,
+        rating: finalBelt.rating,
+        fabricId: finalBelt.fabricId,
+        coverBatchesUsed: finalBelt.coverBatchesUsed || [],
+        skimBatchesUsed: finalBelt.skimBatchesUsed || [],
+      };
+
+      await BeltHistory.create([historyData], { session });
+    }
+
     // Commit transaction
     await session.commitTransaction();
 
     const response: ApiResponse = {
       success: true,
       message: 'Belt updated successfully',
-      data: updatedBelt,
+      data: finalBelt || updatedBelt,
     };
 
     return NextResponse.json(response, { status: 200 });

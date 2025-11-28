@@ -49,6 +49,7 @@ export function DatePicker({
           onSelect={onDateChange}
           className="rounded-md border shadow-sm"
           captionLayout="dropdown"
+          defaultMonth={date}
         />
       </PopoverContent>
     </Popover>

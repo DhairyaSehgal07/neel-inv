@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { BeltDoc } from '@/model/Belt';
 import { useUpdateBeltMutation } from '@/services/api/queries/belts/clientBelts';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,14 +14,37 @@ import {
   SelectValue,
   SelectContent,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { BeltFormData } from '@/types/belt';
 import { FabricInfo } from '@/types/belt';
+import { process_dates_from_dispatch } from '@/lib/helpers/calculations';
+import { DatePicker } from '@/components/ui/date-picker';
 
 interface EditBeltDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   belt: BeltDoc & { fabric?: FabricInfo };
+}
+
+// Helper function to parse a date string (YYYY-MM-DD) as a local date (not UTC)
+// This prevents timezone shifts when parsing date-only strings
+function parseLocalDate(dateStr: string | Date): Date {
+  if (dateStr instanceof Date) {
+    return dateStr;
+  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // Create date in local timezone (month is 0-indexed in Date constructor)
+  return new Date(year, month - 1, day);
 }
 
 // Helper function to initialize form data from belt
@@ -42,25 +65,25 @@ function initializeFormData(belt: BeltDoc & { fabric?: FabricInfo }): Partial<Be
     breakerPlyRemarks: belt.breakerPlyRemarks || '',
     orderNumber: belt.orderNumber || '',
     buyerName: belt.buyerName || '',
-    orderDate: belt.orderDate ? new Date(belt.orderDate) : undefined,
-    deliveryDeadline: belt.deliveryDeadline ? new Date(belt.deliveryDeadline) : undefined,
+    orderDate: belt.orderDate ? parseLocalDate(belt.orderDate) : undefined,
+    deliveryDeadline: belt.deliveryDeadline ? parseLocalDate(belt.deliveryDeadline) : undefined,
     status: belt.status || 'In Production',
     fabricSupplier: belt.fabric?.supplier || '',
     rollNumber: belt.fabric?.rollNumber || '',
     fabricConsumed: belt.fabric?.consumedMeters?.toString() || '',
-    calendaringDate: belt.process?.calendaringDate ? new Date(belt.process.calendaringDate) : undefined,
+    calendaringDate: belt.process?.calendaringDate ? parseLocalDate(belt.process.calendaringDate) : undefined,
     calendaringStation: belt.process?.calendaringMachine || '',
-    greenBeltDate: belt.process?.greenBeltDate ? new Date(belt.process.greenBeltDate) : undefined,
+    greenBeltDate: belt.process?.greenBeltDate ? parseLocalDate(belt.process.greenBeltDate) : undefined,
     greenBeltStation: belt.process?.greenBeltMachine || '',
-    curingDate: belt.process?.curingDate ? new Date(belt.process.curingDate) : undefined,
+    curingDate: belt.process?.curingDate ? parseLocalDate(belt.process.curingDate) : undefined,
     pressStation: belt.process?.curingMachine || '',
-    inspectionDate: belt.process?.inspectionDate ? new Date(belt.process.inspectionDate) : undefined,
+    inspectionDate: belt.process?.inspectionDate ? parseLocalDate(belt.process.inspectionDate) : undefined,
     inspectionStation: belt.process?.inspectionMachine || '',
-    pdiDate: belt.process?.pidDate ? new Date(belt.process.pidDate) : undefined,
-    packagingDate: belt.process?.packagingDate ? new Date(belt.process.packagingDate) : undefined,
-    dispatchDate: belt.process?.dispatchDate ? new Date(belt.process.dispatchDate) : undefined,
-    coverCompoundProducedOn: belt.process?.coverCompoundProducedOn ? new Date(belt.process.coverCompoundProducedOn) : undefined,
-    skimCompoundProducedOn: belt.process?.skimCompoundProducedOn ? new Date(belt.process.skimCompoundProducedOn) : undefined,
+    pdiDate: belt.process?.pidDate ? parseLocalDate(belt.process.pidDate) : undefined,
+    packagingDate: belt.process?.packagingDate ? parseLocalDate(belt.process.packagingDate) : undefined,
+    dispatchDate: belt.process?.dispatchDate ? parseLocalDate(belt.process.dispatchDate) : undefined,
+    coverCompoundProducedOn: belt.process?.coverCompoundProducedOn ? parseLocalDate(belt.process.coverCompoundProducedOn) : undefined,
+    skimCompoundProducedOn: belt.process?.skimCompoundProducedOn ? parseLocalDate(belt.process.skimCompoundProducedOn) : undefined,
   };
 }
 
@@ -78,6 +101,94 @@ function EditBeltFormContent({
   const [formData, setFormData] = useState<Partial<BeltFormData>>(() =>
     initializeFormData(belt)
   );
+  const [hasManualDateEdit, setHasManualDateEdit] = useState(false);
+  const [datesAdjusted, setDatesAdjusted] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const manuallyEditedRef = useRef<Set<string>>(new Set());
+  const initialFormDataRef = useRef<Partial<BeltFormData>>(initializeFormData(belt));
+
+  // Helper function to convert Date to YYYY-MM-DD using local timezone (not UTC)
+  const toLocalDateString = (date: Date | string): string => {
+    if (typeof date === 'string') return date;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Handle date adjustment based on dispatch date
+  const handleAdjustDates = () => {
+    if (!formData.dispatchDate) {
+      toast.error('Please set a dispatch date first');
+      return;
+    }
+
+    const dispatchDateIso = formData.dispatchDate instanceof Date
+      ? toLocalDateString(formData.dispatchDate)
+      : formData.dispatchDate;
+
+    const dates = process_dates_from_dispatch(dispatchDateIso);
+
+    if ('packaging_date' in dates) {
+      setFormData((prev) => ({
+        ...prev,
+        packagingDate: dates.packaging_date ? parseLocalDate(dates.packaging_date) : prev.packagingDate,
+        pdiDate: dates.pdi_date ? parseLocalDate(dates.pdi_date) : prev.pdiDate,
+        inspectionDate: dates.internal_inspection_date ? parseLocalDate(dates.internal_inspection_date) : prev.inspectionDate,
+        curingDate: dates.curing_date ? parseLocalDate(dates.curing_date) : prev.curingDate,
+        greenBeltDate: dates.green_belt_date ? parseLocalDate(dates.green_belt_date) : prev.greenBeltDate,
+        calendaringDate: dates.calendaring_date ? parseLocalDate(dates.calendaring_date) : prev.calendaringDate,
+        coverCompoundProducedOn: dates.cover_compound_date ? parseLocalDate(dates.cover_compound_date) : prev.coverCompoundProducedOn,
+        skimCompoundProducedOn: dates.skim_compound_date ? parseLocalDate(dates.skim_compound_date) : prev.skimCompoundProducedOn,
+      }));
+      setDatesAdjusted(true);
+      setHasManualDateEdit(false);
+      manuallyEditedRef.current.clear();
+      toast.success('Dates adjusted successfully');
+    }
+  };
+
+  // Handle date field change
+  const handleDateChange = (fieldName: keyof BeltFormData, date: Date | undefined) => {
+    manuallyEditedRef.current.add(fieldName);
+    const newFormData = {
+      ...formData,
+      [fieldName]: date,
+    };
+    setFormData(newFormData);
+
+    // Check for manual edits with the new form data
+    const dateFields: (keyof BeltFormData)[] = [
+      'dispatchDate',
+      'packagingDate',
+      'pdiDate',
+      'inspectionDate',
+      'curingDate',
+      'greenBeltDate',
+      'calendaringDate',
+      'coverCompoundProducedOn',
+      'skimCompoundProducedOn',
+    ];
+
+    const hasEdit = dateFields.some((field) => {
+      const currentValue = newFormData[field];
+      const initialValue = initialFormDataRef.current[field];
+
+      if (!currentValue && !initialValue) return false;
+      if (!currentValue || !initialValue) return true;
+
+      const currentStr = currentValue instanceof Date
+        ? toLocalDateString(currentValue)
+        : String(currentValue);
+      const initialStr = initialValue instanceof Date
+        ? toLocalDateString(initialValue)
+        : String(initialValue);
+
+      return currentStr !== initialStr;
+    });
+
+    setHasManualDateEdit(hasEdit);
+  };
 
   const handleSubmit = async () => {
     if (!formData.beltNumber?.trim()) {
@@ -90,6 +201,16 @@ function EditBeltFormContent({
       return;
     }
 
+    // Check if dates were manually edited but not adjusted
+    if (hasManualDateEdit && !datesAdjusted) {
+      setShowConfirmDialog(true);
+      return;
+    }
+
+    await performSubmit();
+  };
+
+  const performSubmit = async () => {
     try {
       await updateMutation.mutateAsync({
         id: beltId,
@@ -249,36 +370,28 @@ function EditBeltFormContent({
               </div>
               <div>
                 <Label>Order Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.orderDate
-                      ? new Date(formData.orderDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
+                <DatePicker
+                  date={formData.orderDate}
+                  onDateChange={(date) =>
                     setFormData({
                       ...formData,
-                      orderDate: e.target.value ? new Date(e.target.value) : undefined,
+                      orderDate: date,
                     })
                   }
+                  placeholder="Select order date"
                 />
               </div>
               <div>
                 <Label>Delivery Deadline</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.deliveryDeadline
-                      ? new Date(formData.deliveryDeadline).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
+                <DatePicker
+                  date={formData.deliveryDeadline}
+                  onDateChange={(date) =>
                     setFormData({
                       ...formData,
-                      deliveryDeadline: e.target.value ? new Date(e.target.value) : undefined,
+                      deliveryDeadline: date,
                     })
                   }
+                  placeholder="Select delivery deadline"
                 />
               </div>
             </div>
@@ -326,23 +439,27 @@ function EditBeltFormContent({
 
           {/* Process Dates */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Process Dates</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Process Dates</h3>
+              {hasManualDateEdit && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleAdjustDates}
+                  disabled={isLoading || !formData.dispatchDate}
+                >
+                  Adjust Dates
+                </Button>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label>Calendaring Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.calendaringDate
-                      ? new Date(formData.calendaringDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      calendaringDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.calendaringDate}
+                  onDateChange={(date) => handleDateChange('calendaringDate', date)}
+                  placeholder="Select calendaring date"
                 />
               </div>
               <div>
@@ -357,19 +474,10 @@ function EditBeltFormContent({
               </div>
               <div>
                 <Label>Green Belt Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.greenBeltDate
-                      ? new Date(formData.greenBeltDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      greenBeltDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.greenBeltDate}
+                  onDateChange={(date) => handleDateChange('greenBeltDate', date)}
+                  placeholder="Select green belt date"
                 />
               </div>
               <div>
@@ -382,19 +490,10 @@ function EditBeltFormContent({
               </div>
               <div>
                 <Label>Curing Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.curingDate
-                      ? new Date(formData.curingDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      curingDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.curingDate}
+                  onDateChange={(date) => handleDateChange('curingDate', date)}
+                  placeholder="Select curing date"
                 />
               </div>
               <div>
@@ -407,19 +506,10 @@ function EditBeltFormContent({
               </div>
               <div>
                 <Label>Inspection Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.inspectionDate
-                      ? new Date(formData.inspectionDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      inspectionDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.inspectionDate}
+                  onDateChange={(date) => handleDateChange('inspectionDate', date)}
+                  placeholder="Select inspection date"
                 />
               </div>
               <div>
@@ -432,85 +522,42 @@ function EditBeltFormContent({
               </div>
               <div>
                 <Label>PDI Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.pdiDate ? new Date(formData.pdiDate).toISOString().split('T')[0] : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      pdiDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.pdiDate}
+                  onDateChange={(date) => handleDateChange('pdiDate', date)}
+                  placeholder="Select PDI date"
                 />
               </div>
               <div>
                 <Label>Packaging Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.packagingDate
-                      ? new Date(formData.packagingDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      packagingDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.packagingDate}
+                  onDateChange={(date) => handleDateChange('packagingDate', date)}
+                  placeholder="Select packaging date"
                 />
               </div>
               <div>
                 <Label>Dispatch Date</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.dispatchDate
-                      ? new Date(formData.dispatchDate).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      dispatchDate: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.dispatchDate}
+                  onDateChange={(date) => handleDateChange('dispatchDate', date)}
+                  placeholder="Select dispatch date"
                 />
               </div>
               <div>
                 <Label>Cover Compound Produced On</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.coverCompoundProducedOn
-                      ? new Date(formData.coverCompoundProducedOn).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      coverCompoundProducedOn: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.coverCompoundProducedOn}
+                  onDateChange={(date) => handleDateChange('coverCompoundProducedOn', date)}
+                  placeholder="Select cover compound date"
                 />
               </div>
               <div>
                 <Label>Skim Compound Produced On</Label>
-                <Input
-                  type="date"
-                  value={
-                    formData.skimCompoundProducedOn
-                      ? new Date(formData.skimCompoundProducedOn).toISOString().split('T')[0]
-                      : ''
-                  }
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      skimCompoundProducedOn: e.target.value ? new Date(e.target.value) : undefined,
-                    })
-                  }
+                <DatePicker
+                  date={formData.skimCompoundProducedOn}
+                  onDateChange={(date) => handleDateChange('skimCompoundProducedOn', date)}
+                  placeholder="Select skim compound date"
                 />
               </div>
             </div>
@@ -525,6 +572,22 @@ function EditBeltFormContent({
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Submission</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have adjusted dates but haven&apos;t clicked the &quot;Adjust Dates&quot; button.
+              Are you sure you want to submit the form without adjusting the dates?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={performSubmit}>Yes, Submit Anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
