@@ -27,7 +27,7 @@ import {
 import { toast } from 'sonner';
 import { BeltFormData } from '@/types/belt';
 import { FabricInfo } from '@/types/belt';
-import { process_dates_from_dispatch } from '@/lib/helpers/calculations';
+import { process_dates_from_any_date } from '@/lib/helpers/calculations';
 import { DatePicker } from '@/components/ui/date-picker';
 
 interface EditBeltDialogProps {
@@ -106,6 +106,7 @@ function EditBeltFormContent({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const manuallyEditedRef = useRef<Set<string>>(new Set());
   const initialFormDataRef = useRef<Partial<BeltFormData>>(initializeFormData(belt));
+  const lastEditedDateFieldRef = useRef<string | null>(null);
 
   // Helper function to convert Date to YYYY-MM-DD using local timezone (not UTC)
   const toLocalDateString = (date: Date | string): string => {
@@ -116,22 +117,47 @@ function EditBeltFormContent({
     return `${year}-${month}-${day}`;
   };
 
-  // Handle date adjustment based on dispatch date
+  // Handle date adjustment based on the last edited date field
   const handleAdjustDates = () => {
-    if (!formData.dispatchDate) {
-      toast.error('Please set a dispatch date first');
-      return;
+    // Determine which date field to use as the base for calculation
+    // Priority: last edited field > dispatch date > any other date
+    let baseField: string | null = null;
+    let baseDate: Date | undefined = undefined;
+
+    // Check if we have a last edited field
+    if (lastEditedDateFieldRef.current && formData[lastEditedDateFieldRef.current as keyof BeltFormData]) {
+      baseField = lastEditedDateFieldRef.current;
+      const dateValue = formData[lastEditedDateFieldRef.current as keyof BeltFormData];
+      if (dateValue instanceof Date || typeof dateValue === 'string') {
+        baseDate = dateValue instanceof Date ? dateValue : parseLocalDate(dateValue);
+      }
     }
 
-    const dispatchDateIso = formData.dispatchDate instanceof Date
-      ? toLocalDateString(formData.dispatchDate)
-      : formData.dispatchDate;
+    // Fallback to dispatch date if no last edited field
+    if (!baseField || !baseDate) {
+      if (!formData.dispatchDate) {
+        toast.error('Please set a date first');
+        return;
+      }
+      baseField = 'dispatchDate';
+      baseDate = formData.dispatchDate instanceof Date
+        ? formData.dispatchDate
+        : parseLocalDate(formData.dispatchDate);
+    }
 
-    const dates = process_dates_from_dispatch(dispatchDateIso);
+    const baseDateIso = baseDate instanceof Date
+      ? toLocalDateString(baseDate)
+      : baseDate;
+
+    console.log('[Edit Belt Dialog] Adjusting dates from field:', baseField, 'with date:', baseDateIso);
+
+    // Use the new function that can calculate from any date field
+    const dates = process_dates_from_any_date(baseField, baseDateIso);
 
     if ('packaging_date' in dates) {
       setFormData((prev) => ({
         ...prev,
+        dispatchDate: dates.dispatch_date ? parseLocalDate(dates.dispatch_date) : prev.dispatchDate,
         packagingDate: dates.packaging_date ? parseLocalDate(dates.packaging_date) : prev.packagingDate,
         pdiDate: dates.pdi_date ? parseLocalDate(dates.pdi_date) : prev.pdiDate,
         inspectionDate: dates.internal_inspection_date ? parseLocalDate(dates.internal_inspection_date) : prev.inspectionDate,
@@ -144,13 +170,19 @@ function EditBeltFormContent({
       setDatesAdjusted(true);
       setHasManualDateEdit(false);
       manuallyEditedRef.current.clear();
+      lastEditedDateFieldRef.current = null;
       toast.success('Dates adjusted successfully');
+    } else {
+      toast.error('Failed to calculate dates');
     }
   };
 
   // Handle date field change
   const handleDateChange = (fieldName: keyof BeltFormData, date: Date | undefined) => {
     manuallyEditedRef.current.add(fieldName);
+    // Track the last edited date field for adjust dates functionality
+    lastEditedDateFieldRef.current = fieldName as string;
+
     const newFormData = {
       ...formData,
       [fieldName]: date,
@@ -447,13 +479,29 @@ function EditBeltFormContent({
                   variant="secondary"
                   size="sm"
                   onClick={handleAdjustDates}
-                  disabled={isLoading || !formData.dispatchDate}
+                  disabled={isLoading}
                 >
                   Adjust Dates
                 </Button>
               )}
             </div>
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Cover Compound Produced On</Label>
+                <DatePicker
+                  date={formData.coverCompoundProducedOn}
+                  onDateChange={(date) => handleDateChange('coverCompoundProducedOn', date)}
+                  placeholder="Select cover compound date"
+                />
+              </div>
+              <div>
+                <Label>Skim Compound Produced On</Label>
+                <DatePicker
+                  date={formData.skimCompoundProducedOn}
+                  onDateChange={(date) => handleDateChange('skimCompoundProducedOn', date)}
+                  placeholder="Select skim compound date"
+                />
+              </div>
               <div>
                 <Label>Calendaring Date</Label>
                 <DatePicker
@@ -542,22 +590,6 @@ function EditBeltFormContent({
                   date={formData.dispatchDate}
                   onDateChange={(date) => handleDateChange('dispatchDate', date)}
                   placeholder="Select dispatch date"
-                />
-              </div>
-              <div>
-                <Label>Cover Compound Produced On</Label>
-                <DatePicker
-                  date={formData.coverCompoundProducedOn}
-                  onDateChange={(date) => handleDateChange('coverCompoundProducedOn', date)}
-                  placeholder="Select cover compound date"
-                />
-              </div>
-              <div>
-                <Label>Skim Compound Produced On</Label>
-                <DatePicker
-                  date={formData.skimCompoundProducedOn}
-                  onDateChange={(date) => handleDateChange('skimCompoundProducedOn', date)}
-                  placeholder="Select skim compound date"
                 />
               </div>
             </div>

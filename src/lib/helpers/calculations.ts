@@ -534,6 +534,332 @@ export function getNextWorkingDay(date: Date): Date {
 }
 
 /**
+ * Helper function to generate a date offset by days from a base date,
+ * skipping Sundays and holidays (going forward in time)
+ */
+function datePlusDaysSkippingHolidaysAndSundays(baseDate: Date, days: number, stepName?: string): Date {
+  const result = new Date(baseDate);
+  let daysRemaining = days;
+  let skippedDays = 0;
+
+  console.log(`[Date Calculation] ${stepName || 'Helper'}: Starting from ${toISODateOnly(baseDate)}, going forward ${days} working day(s)`);
+
+  while (daysRemaining > 0) {
+    result.setDate(result.getDate() + 1);
+    if (!isWeekendOrHoliday(result)) {
+      daysRemaining--;
+    } else {
+      skippedDays++;
+      const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+      console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipping ${toISODateOnly(result)} (${reason})`);
+    }
+  }
+
+  if (skippedDays > 0) {
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipped ${skippedDays} non-working day(s)`);
+  }
+  console.log(`[Date Calculation] ${stepName || 'Helper'}: Calculated date: ${toISODateOnly(result)}`);
+  return result;
+}
+
+/**
+ * Calculate all process dates from a given date field.
+ * This function detects which date was changed and recalculates all other dates accordingly.
+ * @param changedDateField - The field name that was changed (e.g., 'pdiDate', 'dispatchDate')
+ * @param changedDateValue - The new date value (ISO string or Date)
+ * @returns ProcessDatesResult with all calculated dates
+ */
+export function process_dates_from_any_date(
+  changedDateField: string,
+  changedDateValue: string | Date | undefined
+): ProcessDatesResult | Record<string, never> {
+  if (!changedDateValue) {
+    console.log('[Date Calculation] No date value provided, returning empty object');
+    return {};
+  }
+
+  const baseDate = changedDateValue instanceof Date
+    ? changedDateValue
+    : parseLocalDate(changedDateValue);
+
+  console.log('[Date Calculation] Starting calculation from', changedDateField, ':', toISODateOnly(baseDate));
+
+  // Helper function for going backward (same as in process_dates_from_dispatch)
+  const dateMinusDaysSkippingHolidaysAndSundays = (baseDate: Date, days: number, stepName?: string): Date => {
+    const result = new Date(baseDate);
+    let daysRemaining = days;
+    let skippedDays = 0;
+
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Starting from ${toISODateOnly(baseDate)}, going back ${days} working day(s)`);
+
+    while (daysRemaining > 0) {
+      result.setDate(result.getDate() - 1);
+      if (!isWeekendOrHoliday(result)) {
+        daysRemaining--;
+      } else {
+        skippedDays++;
+        const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+        console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipping ${toISODateOnly(result)} (${reason})`);
+      }
+    }
+
+    if (skippedDays > 0) {
+      console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipped ${skippedDays} non-working day(s)`);
+    }
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Calculated date: ${toISODateOnly(result)}`);
+    return result;
+  };
+
+  let dispatch: Date;
+  let packaging: Date;
+  let pdi: Date;
+  let internalInspection: Date;
+  let curing: Date;
+  let greenBelt: Date;
+  let calendaring: Date;
+  let coverCompound: Date;
+  let skimCompound: Date;
+
+  // Calculate dates based on which field was changed
+  switch (changedDateField) {
+    case 'dispatchDate': {
+      dispatch = baseDate;
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      const pdiOffset = randomBetween(4, 5);
+      pdi = dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset, 'PDI');
+      const inspectionOffset = randomBetween(4, 10);
+      internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection');
+      curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2, 'Curing');
+      greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'packagingDate': {
+      packaging = baseDate;
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(packaging, 1, 'Dispatch');
+      const pdiOffset = randomBetween(4, 5);
+      pdi = dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset, 'PDI');
+      const inspectionOffset = randomBetween(4, 10);
+      internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection');
+      curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2, 'Curing');
+      greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'pdiDate': {
+      pdi = baseDate;
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      const inspectionOffset = randomBetween(4, 10);
+      internalInspection = dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection');
+      curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2, 'Curing');
+      greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'inspectionDate': {
+      internalInspection = baseDate;
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      curing = dateMinusDaysSkippingHolidaysAndSundays(internalInspection, 2, 'Curing');
+      greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'curingDate': {
+      curing = baseDate;
+      internalInspection = datePlusDaysSkippingHolidaysAndSundays(curing, 2, 'Internal Inspection');
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      greenBelt = dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'greenBeltDate': {
+      greenBelt = baseDate;
+      curing = datePlusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Curing');
+      internalInspection = datePlusDaysSkippingHolidaysAndSundays(curing, 2, 'Internal Inspection');
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      const calendaringOffset = randomBetween(0, 1);
+      calendaring = calendaringOffset === 0
+        ? new Date(greenBelt)
+        : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'calendaringDate': {
+      calendaring = baseDate;
+      // Calendaring can be same day or 1 day before green belt
+      // If calendaring is set, green belt can be same day or 1 day after
+      const greenBeltOffset = randomBetween(0, 1);
+      greenBelt = greenBeltOffset === 0
+        ? new Date(calendaring)
+        : datePlusDaysSkippingHolidaysAndSundays(calendaring, 1, 'Green Belt');
+      curing = datePlusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Curing');
+      internalInspection = datePlusDaysSkippingHolidaysAndSundays(curing, 2, 'Internal Inspection');
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      const coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'coverCompoundProducedOn': {
+      coverCompound = baseDate;
+      const coverCompoundOffset = randomBetween(7, 10);
+      calendaring = datePlusDaysSkippingHolidaysAndSundays(coverCompound, coverCompoundOffset, 'Calendaring');
+      const greenBeltOffset = randomBetween(0, 1);
+      greenBelt = greenBeltOffset === 0
+        ? new Date(calendaring)
+        : datePlusDaysSkippingHolidaysAndSundays(calendaring, 1, 'Green Belt');
+      curing = datePlusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Curing');
+      internalInspection = datePlusDaysSkippingHolidaysAndSundays(curing, 2, 'Internal Inspection');
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      const skimCompoundOffset = randomBetween(7, 10);
+      skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      break;
+    }
+
+    case 'skimCompoundProducedOn': {
+      skimCompound = baseDate;
+      // For skim compound, we need to ensure it's different from cover compound
+      // Calculate cover compound first, then adjust if needed
+      let coverCompoundOffset = randomBetween(7, 10);
+      calendaring = datePlusDaysSkippingHolidaysAndSundays(skimCompound, coverCompoundOffset, 'Calendaring');
+      // Recalculate cover compound from calendaring
+      coverCompoundOffset = randomBetween(7, 10);
+      coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
+      // If they're the same, adjust
+      if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
+        coverCompound = dateMinusDaysSkippingHolidaysAndSundays(skimCompound, 1, 'Cover Compound (adjusted)');
+        // Recalculate calendaring from adjusted cover compound
+        coverCompoundOffset = randomBetween(7, 10);
+        calendaring = datePlusDaysSkippingHolidaysAndSundays(coverCompound, coverCompoundOffset, 'Calendaring');
+      }
+      const greenBeltOffset = randomBetween(0, 1);
+      greenBelt = greenBeltOffset === 0
+        ? new Date(calendaring)
+        : datePlusDaysSkippingHolidaysAndSundays(calendaring, 1, 'Green Belt');
+      curing = datePlusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Curing');
+      internalInspection = datePlusDaysSkippingHolidaysAndSundays(curing, 2, 'Internal Inspection');
+      const inspectionOffset = randomBetween(4, 10);
+      pdi = datePlusDaysSkippingHolidaysAndSundays(internalInspection, inspectionOffset, 'PDI');
+      const pdiOffset = randomBetween(4, 5);
+      dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
+      packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
+      break;
+    }
+
+    default:
+      console.log('[Date Calculation] Unknown date field:', changedDateField);
+      return {};
+  }
+
+  const result = {
+    dispatch_date: toISODateOnly(dispatch),
+    packaging_date: toISODateOnly(packaging),
+    pdi_date: toISODateOnly(pdi),
+    internal_inspection_date: toISODateOnly(internalInspection),
+    curing_date: toISODateOnly(curing),
+    green_belt_date: toISODateOnly(greenBelt),
+    calendaring_date: toISODateOnly(calendaring),
+    cover_compound_date: toISODateOnly(coverCompound),
+    skim_compound_date: toISODateOnly(skimCompound),
+  };
+
+  console.log('[Date Calculation] Final calculated dates from', changedDateField, ':', result);
+  return result;
+}
+
+/**
  * Validate date relationships according to the calculation rules.
  * Returns an object with validation errors for each date field.
  */
