@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { FabricInfo } from '@/types/belt';
 import { useSession } from 'next-auth/react';
+import { roundToNearest5 } from '@/lib/utils';
 
 interface BeltDetailsDialogProps {
   open: boolean;
@@ -95,17 +96,17 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
           <div>
             <h3 className="text-lg font-semibold mb-4">Belt Specifications</h3>
             <div className="space-y-1">
-              <DetailRow label="Length" value={belt.beltLengthM ? `${Number(belt.beltLengthM).toFixed(2)} m` : '-'} />
-              <DetailRow label="Width" value={belt.beltWidthMm ? `${Number(belt.beltWidthMm).toFixed(2)} mm` : '-'} />
+              <DetailRow label="Length" value={belt.beltLengthM ? `${roundToNearest5(Number(belt.beltLengthM)).toFixed(2)} m` : '-'} />
+              <DetailRow label="Width" value={belt.beltWidthMm ? `${roundToNearest5(Number(belt.beltWidthMm)).toFixed(2)} mm` : '-'} />
               <DetailRow
                 label="Top Cover"
-                value={belt.topCoverMm ? `${Number(belt.topCoverMm).toFixed(2)} mm` : '-'}
+                value={belt.topCoverMm ? `${roundToNearest5(Number(belt.topCoverMm)).toFixed(2)} mm` : '-'}
               />
               <DetailRow
                 label="Bottom Cover"
-                value={belt.bottomCoverMm ? `${Number(belt.bottomCoverMm).toFixed(2)} mm` : '-'}
+                value={belt.bottomCoverMm ? `${roundToNearest5(Number(belt.bottomCoverMm)).toFixed(2)} mm` : '-'}
               />
-              <DetailRow label="Carcass" value={belt.carcassMm ? `${Number(belt.carcassMm).toFixed(2)} mm` : '-'} />
+              <DetailRow label="Carcass" value={belt.carcassMm ? `${roundToNearest5(Number(belt.carcassMm)).toFixed(2)} mm` : '-'} />
             </div>
           </div>
 
@@ -195,7 +196,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                     />
                   )}
                   {belt.process.pidDate && (
-                    <DetailRow label="PID Date" value={formatDate(belt.process.pidDate)} />
+                    <DetailRow label="PDI Date" value={formatDate(belt.process.pidDate)} />
                   )}
                   {belt.process.packagingDate && (
                     <DetailRow
@@ -260,7 +261,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                               </>
                             )}
                             <span className="text-muted-foreground">Consumed:</span>
-                            <span>{Number(batch.consumedKg).toFixed(2)} kg</span>
+                            <span>{roundToNearest5(Number(batch.consumedKg)).toFixed(2)} kg</span>
                           </div>
                         </div>
                       ))}
@@ -305,7 +306,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                               </>
                             )}
                             <span className="text-muted-foreground">Consumed:</span>
-                            <span>{Number(batch.consumedKg).toFixed(2)} kg</span>
+                            <span>{roundToNearest5(Number(batch.consumedKg)).toFixed(2)} kg</span>
                           </div>
                         </div>
                       ))}
@@ -336,7 +337,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                     label="Consumed Meters"
                     value={
                       belt.fabric.consumedMeters !== undefined
-                        ? `${Number(belt.fabric.consumedMeters).toFixed(2)} m`
+                        ? `${roundToNearest5(Number(belt.fabric.consumedMeters)).toFixed(2)} m`
                         : '-'
                     }
                   />

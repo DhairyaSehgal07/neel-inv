@@ -23,6 +23,7 @@ import { BeltFormData } from '@/types/belt';
 import SearchSelect from '../search-select';
 import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
 import { useSession } from 'next-auth/react';
+import { roundToNearest5 } from '@/lib/utils';
 
 interface CompoundInfoStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -113,7 +114,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
         beltWidthM,
         beltLengthM
       );
-      setValue('coverCompoundConsumed', coverWeight.toFixed(2));
+      setValue('coverCompoundConsumed', roundToNearest5(coverWeight).toFixed(2));
     }
   }, [topCover, bottomCover, beltWidth, beltLength, setValue]);
 
@@ -140,7 +141,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
         beltWidthM,
         beltLengthM
       );
-      setValue('skimCompoundConsumed', skimWeight.toFixed(2));
+      setValue('skimCompoundConsumed', roundToNearest5(skimWeight).toFixed(2));
     }
   }, [beltWidth, beltLength, rating, fabricStrength, setValue]);
 

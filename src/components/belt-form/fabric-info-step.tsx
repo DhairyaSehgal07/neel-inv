@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
 import { useSession } from 'next-auth/react';
+import { roundToNearest5 } from '@/lib/utils';
 
 interface FabricInfoStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -51,7 +52,7 @@ export const FabricInfoStep = ({ form, onNext, onBack }: FabricInfoStepProps) =>
       const numberOfPlies = isNaN(denominator) ? 1 : denominator;
 
       const fabricConsumed = parseFloat(String(beltLength)) * numberOfPlies * 1.02;
-      setValue('fabricConsumed', fabricConsumed.toFixed(2));
+      setValue('fabricConsumed', roundToNearest5(fabricConsumed).toFixed(2));
     }
   }, [beltLength, rating, setValue]);
 

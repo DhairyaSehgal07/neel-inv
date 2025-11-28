@@ -5,6 +5,7 @@ import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { DataTableRowActions } from './row-actions';
 import { FabricInfo } from '@/types/belt';
+import { roundToNearest5 } from '@/lib/utils';
 
 type BeltWithFabric = BeltDoc & { fabric?: FabricInfo };
 
@@ -31,7 +32,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Width',
     cell: ({ row }) => {
       const width = row.original.beltWidthMm;
-      return width ? `${Number(width).toFixed(2)} mm` : '-';
+      return width ? `${roundToNearest5(Number(width)).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -51,7 +52,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Top',
     cell: ({ row }) => {
       const top = row.original.topCoverMm;
-      return top ? `${Number(top).toFixed(2)} mm` : '-';
+      return top ? `${roundToNearest5(Number(top)).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -59,7 +60,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Bottom',
     cell: ({ row }) => {
       const bottom = row.original.bottomCoverMm;
-      return bottom ? `${Number(bottom).toFixed(2)} mm` : '-';
+      return bottom ? `${roundToNearest5(Number(bottom)).toFixed(2)} mm` : '-';
     },
   },
   {
@@ -83,7 +84,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Length',
     cell: ({ row }) => {
       const length = row.original.beltLengthM;
-      return length ? `${Number(length).toFixed(2)} m` : '-';
+      return length ? `${roundToNearest5(Number(length)).toFixed(2)} m` : '-';
     },
   },
   {
