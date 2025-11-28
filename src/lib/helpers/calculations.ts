@@ -860,6 +860,291 @@ export function process_dates_from_any_date(
 }
 
 /**
+ * Calculate only dates that come BEFORE a given date field in the process flow.
+ * This function only recalculates dates backward from the changed date and does not
+ * modify dates that come after it in the process.
+ *
+ * Process order (earliest to latest):
+ * 1. Cover Compound Produced On
+ * 2. Skim Compound Produced On
+ * 3. Calendaring Date
+ * 4. Green Belt Date
+ * 5. Curing Date
+ * 6. Inspection Date
+ * 7. PDI Date
+ * 8. Packaging Date
+ * 9. Dispatch Date
+ *
+ * @param changedDateField - The field name that was changed
+ * @param changedDateValue - The new date value (ISO string or Date)
+ * @returns Partial ProcessDatesResult with only dates that come before the changed date
+ */
+export function process_dates_backward_only(
+  changedDateField: string,
+  changedDateValue: string | Date | undefined
+): Partial<ProcessDatesResult> {
+  if (!changedDateValue) {
+    console.log('[Date Calculation] No date value provided, returning empty object');
+    return {};
+  }
+
+  const baseDate = changedDateValue instanceof Date
+    ? changedDateValue
+    : parseLocalDate(changedDateValue);
+
+  console.log('[Date Calculation] Starting backward-only calculation from', changedDateField, ':', toISODateOnly(baseDate));
+
+  // Helper function for going backward
+  const dateMinusDaysSkippingHolidaysAndSundays = (baseDate: Date, days: number, stepName?: string): Date => {
+    const result = new Date(baseDate);
+    let daysRemaining = days;
+    let skippedDays = 0;
+
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Starting from ${toISODateOnly(baseDate)}, going back ${days} working day(s)`);
+
+    while (daysRemaining > 0) {
+      result.setDate(result.getDate() - 1);
+      if (!isWeekendOrHoliday(result)) {
+        daysRemaining--;
+      } else {
+        skippedDays++;
+        const reason = isSunday(result) ? 'Sunday' : 'Holiday';
+        console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipping ${toISODateOnly(result)} (${reason})`);
+      }
+    }
+
+    if (skippedDays > 0) {
+      console.log(`[Date Calculation] ${stepName || 'Helper'}: Skipped ${skippedDays} non-working day(s)`);
+    }
+    console.log(`[Date Calculation] ${stepName || 'Helper'}: Calculated date: ${toISODateOnly(result)}`);
+    return result;
+  };
+
+  const result: Partial<ProcessDatesResult> = {};
+
+  // Calculate dates backward based on which field was changed
+  switch (changedDateField) {
+    case 'dispatchDate': {
+      // Calculate all dates backward from dispatch
+      const dispatch = baseDate;
+      result.dispatch_date = toISODateOnly(dispatch);
+      result.packaging_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging'));
+      const pdiOffset = randomBetween(4, 5);
+      result.pdi_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(dispatch, pdiOffset, 'PDI'));
+      const inspectionOffset = randomBetween(4, 10);
+      const pdi = parseLocalDate(result.pdi_date);
+      result.internal_inspection_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection'));
+      const inspection = parseLocalDate(result.internal_inspection_date);
+      result.curing_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(inspection, 2, 'Curing'));
+      const curing = parseLocalDate(result.curing_date);
+      result.green_belt_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt'));
+      const greenBelt = parseLocalDate(result.green_belt_date);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'packagingDate': {
+      // Calculate dates backward from packaging (but not dispatch)
+      const packaging = baseDate;
+      result.packaging_date = toISODateOnly(packaging);
+      const pdiOffset = randomBetween(4, 5);
+      // Calculate PDI backward from packaging + 1 (which would be dispatch)
+      const estimatedDispatch = datePlusDaysSkippingHolidaysAndSundays(packaging, 1, 'Estimated Dispatch');
+      result.pdi_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(estimatedDispatch, pdiOffset, 'PDI'));
+      const pdi = parseLocalDate(result.pdi_date);
+      const inspectionOffset = randomBetween(4, 10);
+      result.internal_inspection_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection'));
+      const inspection = parseLocalDate(result.internal_inspection_date);
+      result.curing_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(inspection, 2, 'Curing'));
+      const curing = parseLocalDate(result.curing_date);
+      result.green_belt_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt'));
+      const greenBelt = parseLocalDate(result.green_belt_date);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'pdiDate': {
+      // Calculate dates backward from PDI (but not packaging or dispatch)
+      const pdi = baseDate;
+      result.pdi_date = toISODateOnly(pdi);
+      const inspectionOffset = randomBetween(4, 10);
+      result.internal_inspection_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(pdi, inspectionOffset, 'Internal Inspection'));
+      const inspection = parseLocalDate(result.internal_inspection_date);
+      result.curing_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(inspection, 2, 'Curing'));
+      const curing = parseLocalDate(result.curing_date);
+      result.green_belt_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt'));
+      const greenBelt = parseLocalDate(result.green_belt_date);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'inspectionDate': {
+      // Calculate dates backward from inspection (but not PDI, packaging, or dispatch)
+      const inspection = baseDate;
+      result.internal_inspection_date = toISODateOnly(inspection);
+      result.curing_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(inspection, 2, 'Curing'));
+      const curing = parseLocalDate(result.curing_date);
+      result.green_belt_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt'));
+      const greenBelt = parseLocalDate(result.green_belt_date);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'curingDate': {
+      // Calculate dates backward from curing
+      const curing = baseDate;
+      result.curing_date = toISODateOnly(curing);
+      result.green_belt_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(curing, 1, 'Green Belt'));
+      const greenBelt = parseLocalDate(result.green_belt_date);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'greenBeltDate': {
+      // Calculate dates backward from green belt
+      const greenBelt = baseDate;
+      result.green_belt_date = toISODateOnly(greenBelt);
+      const calendaringOffset = randomBetween(0, 1);
+      result.calendaring_date = toISODateOnly(
+        calendaringOffset === 0
+          ? greenBelt
+          : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
+      );
+      const calendaring = parseLocalDate(result.calendaring_date);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'calendaringDate': {
+      // Calculate dates backward from calendaring
+      const calendaring = baseDate;
+      result.calendaring_date = toISODateOnly(calendaring);
+      const coverCompoundOffset = randomBetween(7, 10);
+      result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
+      const coverCompound = parseLocalDate(result.cover_compound_date);
+      const skimCompoundOffset = randomBetween(7, 10);
+      let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
+      if (toISODateOnly(skimCompound) === result.cover_compound_date) {
+        skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
+      }
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'coverCompoundProducedOn': {
+      // Only calculate skim compound (must be different date)
+      const coverCompound = baseDate;
+      result.cover_compound_date = toISODateOnly(coverCompound);
+      // Skim compound should be on a different date, typically 1 working day before
+      const skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound');
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      break;
+    }
+
+    case 'skimCompoundProducedOn': {
+      // Only calculate cover compound (must be different date)
+      const skimCompound = baseDate;
+      result.skim_compound_date = toISODateOnly(skimCompound);
+      // Cover compound should be on a different date, typically 1 working day after or before
+      // Since we're going backward, we'll put cover compound 1 working day before skim
+      const coverCompound = dateMinusDaysSkippingHolidaysAndSundays(skimCompound, 1, 'Cover Compound');
+      result.cover_compound_date = toISODateOnly(coverCompound);
+      break;
+    }
+
+    default:
+      console.log('[Date Calculation] Unknown date field for backward calculation:', changedDateField);
+      return {};
+  }
+
+  console.log('[Date Calculation] Backward-only calculated dates from', changedDateField, ':', result);
+  return result;
+}
+
+/**
  * Validate date relationships according to the calculation rules.
  * Returns an object with validation errors for each date field.
  */

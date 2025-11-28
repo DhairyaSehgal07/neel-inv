@@ -27,7 +27,7 @@ import {
 import { toast } from 'sonner';
 import { BeltFormData } from '@/types/belt';
 import { FabricInfo } from '@/types/belt';
-import { process_dates_from_any_date } from '@/lib/helpers/calculations';
+import { process_dates_backward_only } from '@/lib/helpers/calculations';
 import { DatePicker } from '@/components/ui/date-picker';
 
 interface EditBeltDialogProps {
@@ -149,29 +149,52 @@ function EditBeltFormContent({
       ? toLocalDateString(baseDate)
       : baseDate;
 
-    console.log('[Edit Belt Dialog] Adjusting dates from field:', baseField, 'with date:', baseDateIso);
+    console.log('[Edit Belt Dialog] Adjusting dates backward from field:', baseField, 'with date:', baseDateIso);
 
-    // Use the new function that can calculate from any date field
-    const dates = process_dates_from_any_date(baseField, baseDateIso);
+    // Use the backward-only function that only calculates dates before the changed date
+    const dates = process_dates_backward_only(baseField, baseDateIso);
 
-    if ('packaging_date' in dates) {
-      setFormData((prev) => ({
-        ...prev,
-        dispatchDate: dates.dispatch_date ? parseLocalDate(dates.dispatch_date) : prev.dispatchDate,
-        packagingDate: dates.packaging_date ? parseLocalDate(dates.packaging_date) : prev.packagingDate,
-        pdiDate: dates.pdi_date ? parseLocalDate(dates.pdi_date) : prev.pdiDate,
-        inspectionDate: dates.internal_inspection_date ? parseLocalDate(dates.internal_inspection_date) : prev.inspectionDate,
-        curingDate: dates.curing_date ? parseLocalDate(dates.curing_date) : prev.curingDate,
-        greenBeltDate: dates.green_belt_date ? parseLocalDate(dates.green_belt_date) : prev.greenBeltDate,
-        calendaringDate: dates.calendaring_date ? parseLocalDate(dates.calendaring_date) : prev.calendaringDate,
-        coverCompoundProducedOn: dates.cover_compound_date ? parseLocalDate(dates.cover_compound_date) : prev.coverCompoundProducedOn,
-        skimCompoundProducedOn: dates.skim_compound_date ? parseLocalDate(dates.skim_compound_date) : prev.skimCompoundProducedOn,
-      }));
+    if (Object.keys(dates).length > 0) {
+      setFormData((prev) => {
+        const updated = { ...prev };
+
+        // Only update dates that were calculated (dates before the changed date)
+        // Preserve dates that come after the changed date
+        if (dates.dispatch_date) {
+          updated.dispatchDate = parseLocalDate(dates.dispatch_date);
+        }
+        if (dates.packaging_date) {
+          updated.packagingDate = parseLocalDate(dates.packaging_date);
+        }
+        if (dates.pdi_date) {
+          updated.pdiDate = parseLocalDate(dates.pdi_date);
+        }
+        if (dates.internal_inspection_date) {
+          updated.inspectionDate = parseLocalDate(dates.internal_inspection_date);
+        }
+        if (dates.curing_date) {
+          updated.curingDate = parseLocalDate(dates.curing_date);
+        }
+        if (dates.green_belt_date) {
+          updated.greenBeltDate = parseLocalDate(dates.green_belt_date);
+        }
+        if (dates.calendaring_date) {
+          updated.calendaringDate = parseLocalDate(dates.calendaring_date);
+        }
+        if (dates.cover_compound_date) {
+          updated.coverCompoundProducedOn = parseLocalDate(dates.cover_compound_date);
+        }
+        if (dates.skim_compound_date) {
+          updated.skimCompoundProducedOn = parseLocalDate(dates.skim_compound_date);
+        }
+
+        return updated;
+      });
       setDatesAdjusted(true);
       setHasManualDateEdit(false);
       manuallyEditedRef.current.clear();
       lastEditedDateFieldRef.current = null;
-      toast.success('Dates adjusted successfully');
+      toast.success('Dates adjusted successfully (only dates before the changed date were updated)');
     } else {
       toast.error('Failed to calculate dates');
     }
