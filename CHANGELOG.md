@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.11](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.9...v0.1.11) (2025-11-28)
+
+
+### Bug Fixes
+
+* improve date handling and compound batch date synchronization ([bfe0ccc](https://github.com/DhairyaSehgal07/neel-inv/commit/bfe0ccca12a36a8895bc61051a9f3140b32ae6f1))
+* improve number formatting and add RBAC protection to belt details ([fc291ec](https://github.com/DhairyaSehgal07/neel-inv/commit/fc291ecc4cc79894671ed65001df63855bf40bbc))
+
+
+### Miscellaneous Chores
+
+* bump version to 0.1.10 ([6455952](https://github.com/DhairyaSehgal07/neel-inv/commit/6455952a911890d557951f1a180f251c8235c42b))
+
+
+### Code Refactoring
+
+* reorganize fabric lookup table and add new fabric ratings ([124667e](https://github.com/DhairyaSehgal07/neel-inv/commit/124667e849381893de3e4ea5bcb94849200b7730))
+* update belt form, table components, and utility functions ([605007d](https://github.com/DhairyaSehgal07/neel-inv/commit/605007d701276e49f267accc9513473a561ebf9c))
+
 ### [0.1.10](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.9...v0.1.10) (2025-01-28)
 
 
