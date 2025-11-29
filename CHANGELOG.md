@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.12](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.11...v0.1.12) (2025-11-29)
+
+
+### Features
+
+* add sorting functionality to belts table and fix top/bottom cover display ([84ffeaf](https://github.com/DhairyaSehgal07/neel-inv/commit/84ffeaf55f4157d9ef91d8d17d3cf0fe758ed61d))
+* enable date calculations from any date field in edit belt dialog ([3d2d39a](https://github.com/DhairyaSehgal07/neel-inv/commit/3d2d39aed0febe15bf9e99e97b184345353af603))
+* implement backward-only date calculation in edit belt dialog ([40b3a7d](https://github.com/DhairyaSehgal07/neel-inv/commit/40b3a7d5ebf908cc887913628b5832510bc0fe9b))
+
 ### [0.1.11](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.9...v0.1.11) (2025-11-28)
 
 
