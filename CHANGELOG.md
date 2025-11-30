@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.14](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.13...v0.1.14) (2025-11-30)
+
+
+### Features
+
+* add rating management system with MongoDB integration ([e491851](https://github.com/DhairyaSehgal07/neel-inv/commit/e49185140a42755b356611c1c1fc51ba77d9df35))
+
 ### [0.1.12](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.11...v0.1.12) (2025-11-29)
 
 
