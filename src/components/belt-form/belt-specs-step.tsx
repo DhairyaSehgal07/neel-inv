@@ -14,10 +14,11 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import SearchSelect from '@/components/search-select';
-import { FABRIC_LOOKUP, FABRIC_TYPES, EDGE_TYPES } from '@/lib/helpers/belts';
+import { FABRIC_TYPES, EDGE_TYPES } from '@/lib/helpers/belts';
 import { useWatch } from 'react-hook-form';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
+import { useRatingsQuery } from '@/services/api/queries/ratings/clientRatings';
 
 interface BeltSpecsStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -27,6 +28,8 @@ interface BeltSpecsStepProps {
 
 export const BeltSpecsStep = ({ form, onNext, onBack }: BeltSpecsStepProps) => {
   const { handleSubmit, control, setValue } = form;
+  const { data: ratings } = useRatingsQuery();
+
   const breakerPly = useWatch({
     control,
     name: 'breakerPly',
@@ -40,9 +43,15 @@ export const BeltSpecsStep = ({ form, onNext, onBack }: BeltSpecsStepProps) => {
 
   // Calculate belt strength from rating
   const beltStrength = useMemo(() => {
-    if (!rating) return undefined;
-    return FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength;
-  }, [rating]);
+    if (!rating || !ratings) return undefined;
+    return ratings.find((r) => r.rating === rating)?.strength;
+  }, [rating, ratings]);
+
+  // Transform ratings for SearchSelect
+  const ratingOptions = useMemo(() => {
+    if (!ratings) return [];
+    return ratings.map((r) => ({ label: r.rating, value: r.rating }));
+  }, [ratings]);
 
   // Auto-update beltStrength when rating changes
   useEffect(() => {
@@ -77,7 +86,7 @@ export const BeltSpecsStep = ({ form, onNext, onBack }: BeltSpecsStepProps) => {
               <FormLabel>Rating</FormLabel>
               <FormControl>
                 <SearchSelect
-                  options={FABRIC_LOOKUP.map((f) => ({ label: f.rating, value: f.rating }))}
+                  options={ratingOptions}
                   value={field.value}
                   onChange={field.onChange}
                   placeholder="Select a rating"

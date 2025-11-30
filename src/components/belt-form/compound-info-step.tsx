@@ -17,11 +17,11 @@ import {
   parseNumberOfPliesFromRating,
   skim_thickness_from_strength,
 } from '@/lib/helpers/calculations';
-import { FABRIC_LOOKUP } from '@/lib/helpers/belts';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
 import SearchSelect from '../search-select';
 import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
+import { useRatingsQuery } from '@/services/api/queries/ratings/clientRatings';
 import { useSession } from 'next-auth/react';
 import { roundToNearest5 } from '@/lib/utils';
 
@@ -36,6 +36,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'Admin';
   const { data } = useCompoundMastersQuery();
+  const { data: ratings } = useRatingsQuery();
 
   // Filter and transform compound masters for cover compounds
   const coverCompoundOptions = useMemo(() => {
@@ -66,9 +67,9 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
   const rating = watch('rating');
 
   const fabricStrength = useMemo(() => {
-    if (!rating) return undefined;
-    return FABRIC_LOOKUP.find((f) => f.rating === rating)?.strength;
-  }, [rating]);
+    if (!rating || !ratings) return undefined;
+    return ratings.find((r) => r.rating === rating)?.strength;
+  }, [rating, ratings]);
 
   // Calculate intermediate values for cover compound
   const coverCalculationValues = useMemo(() => {

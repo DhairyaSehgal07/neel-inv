@@ -17,7 +17,7 @@ export interface CompoundBatchDoc extends Document {
 
 const CompoundBatchSchema = new Schema<CompoundBatchDoc>(
   {
-    compoundCode: { type: String, required: true, index: true },
+    compoundCode: { type: String, required: true },
     compoundName: { type: String },
     date: { type: String, required: true }, // YYYY-MM-DD
     batches: { type: Number, required: true },
@@ -34,7 +34,7 @@ const CompoundBatchSchema = new Schema<CompoundBatchDoc>(
 // Global uniqueness on date (one batch per day across all compounds)
 CompoundBatchSchema.index({ date: 1 }, { unique: true });
 
-// Non-unique index for compoundCode lookups
+// Non-unique index for compoundCode lookups (removed index: true from field to avoid duplicate)
 CompoundBatchSchema.index({ compoundCode: 1 });
 
 // Composite index for FIFO queries (find oldest batch with remaining inventory)

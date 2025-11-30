@@ -35,6 +35,12 @@ export enum Permission {
   COMPOUND_BATCH_CREATE = 'compound_batch:create',
   COMPOUND_BATCH_UPDATE = 'compound_batch:update',
   COMPOUND_BATCH_DELETE = 'compound_batch:delete',
+
+  // Rating permissions
+  RATING_VIEW = 'rating:view',
+  RATING_CREATE = 'rating:create',
+  RATING_UPDATE = 'rating:update',
+  RATING_DELETE = 'rating:delete',
 }
 
 /**
@@ -67,6 +73,12 @@ export const PermissionGroups = {
     Permission.COMPOUND_MASTER_CREATE,
     Permission.COMPOUND_MASTER_UPDATE,
     Permission.COMPOUND_MASTER_DELETE,
+  ],
+  RATING: [
+    Permission.RATING_VIEW,
+    Permission.RATING_CREATE,
+    Permission.RATING_UPDATE,
+    Permission.RATING_DELETE,
   ],
 } as const;
 

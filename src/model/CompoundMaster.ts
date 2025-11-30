@@ -11,13 +11,16 @@ export interface CompoundMasterDoc extends Document {
 
 const CompoundMasterSchema = new Schema<CompoundMasterDoc>(
   {
-    compoundCode: { type: String, required: true, unique: true },
+    compoundCode: { type: String, required: true },
     compoundName: { type: String, required: true },
     category: { type: String, required: true, enum: ['cover', 'skim'] },
     defaultWeightPerBatch: { type: Number, required: true },
   },
   { timestamps: true }
 );
+
+// Create unique index explicitly (avoiding duplicate index warnings in Next.js builds)
+CompoundMasterSchema.index({ compoundCode: 1 }, { unique: true });
 
 const CompoundMaster =
   (mongoose.models.CompoundMaster as mongoose.Model<CompoundMasterDoc>) ||

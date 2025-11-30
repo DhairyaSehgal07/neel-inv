@@ -15,9 +15,9 @@ export default function SettingsPage() {
       route: '/dashboard/settings/compounds',
     },
     {
-      title: 'Fabric Settings',
+      title: 'Manage Rating',
       icon: Layers,
-      route: '/dashboard/settings/fabrics',
+      route: '/dashboard/settings/rating',
     },
     {
       title: 'Belt Settings',
