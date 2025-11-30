@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -14,11 +14,13 @@ import { Input } from '@/components/ui/input';
 import { DatePicker } from '../ui/date-picker';
 import {
   process_dates_from_dispatch,
+  process_dates_backward_only,
   validateDateRelationships,
 } from '@/lib/helpers/calculations';
 import { useWatch } from 'react-hook-form';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
+import { toast } from 'sonner';
 
 interface ProductionDatesStepProps {
   form: UseFormReturn<BeltFormData>;
@@ -26,10 +28,26 @@ interface ProductionDatesStepProps {
   onBack: () => void;
 }
 
+// Helper function to parse a date string (YYYY-MM-DD) as a local date (not UTC)
+// This prevents timezone shifts when parsing date-only strings
+function parseLocalDate(dateStr: string | Date): Date {
+  if (dateStr instanceof Date) {
+    return dateStr;
+  }
+  const [year, month, day] = dateStr.split('-').map(Number);
+  // Create date in local timezone (month is 0-indexed in Date constructor)
+  return new Date(year, month - 1, day);
+}
+
 export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesStepProps) => {
   const { handleSubmit, control, setValue, setError, clearErrors, getValues } = form;
   const manuallyEditedRef = useRef<Set<string>>(new Set());
   const previousErrorsRef = useRef<Set<string>>(new Set());
+  const lastEditedDateFieldRef = useRef<string | null>(null);
+  const initialDispatchDateRef = useRef<Date | undefined>(undefined);
+
+  const [isManualEditMode, setIsManualEditMode] = useState(false);
+  const [hasManualDateEdit, setHasManualDateEdit] = useState(false);
 
   const dispatchDate = useWatch({ control, name: 'dispatchDate' });
   const packagingDate = useWatch({ control, name: 'packagingDate' });
@@ -50,10 +68,15 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
     return `${year}-${month}-${day}`;
   };
 
-  // Auto-calculate dates when dispatch date changes
+  // Auto-calculate dates when dispatch date changes (only when not in manual edit mode)
   // Recalculate dependent dates unless they were manually edited
   useEffect(() => {
-    if (dispatchDate) {
+    if (dispatchDate && !isManualEditMode) {
+      // Track initial dispatch date
+      if (!initialDispatchDateRef.current) {
+        initialDispatchDateRef.current = dispatchDate instanceof Date ? dispatchDate : parseLocalDate(dispatchDate);
+      }
+
       // Convert date to ISO string if it's a Date object (using local timezone, not UTC)
       const dispatchDateIso = dispatchDate instanceof Date
         ? toLocalDateString(dispatchDate)
@@ -104,7 +127,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
         }
       }
     }
-  }, [dispatchDate, setValue]);
+  }, [dispatchDate, isManualEditMode, setValue]);
 
   // Validate dates whenever they change
   useEffect(() => {
@@ -149,8 +172,93 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
     clearErrors,
   ]);
 
+  // Handle date adjustment based on the last edited date field
+  const handleAdjustDates = () => {
+    // Determine which date field to use as the base for calculation
+    // Priority: last edited field > dispatch date > any other date
+    let baseField: string | null = null;
+    let baseDate: Date | undefined = undefined;
+
+    // Check if we have a last edited field
+    if (lastEditedDateFieldRef.current) {
+      const dateValue = getValues()[lastEditedDateFieldRef.current as keyof BeltFormData];
+      if (dateValue) {
+        baseField = lastEditedDateFieldRef.current;
+        baseDate = dateValue instanceof Date ? dateValue : parseLocalDate(dateValue as string);
+      }
+    }
+
+    // Fallback to dispatch date if no last edited field
+    if (!baseField || !baseDate) {
+      if (!dispatchDate) {
+        toast.error('Please set a date first');
+        return;
+      }
+      baseField = 'dispatchDate';
+      baseDate = dispatchDate instanceof Date
+        ? dispatchDate
+        : parseLocalDate(dispatchDate);
+    }
+
+    const baseDateIso = baseDate instanceof Date
+      ? toLocalDateString(baseDate)
+      : baseDate;
+
+    console.log('[Production Dates Step] Adjusting dates backward from field:', baseField, 'with date:', baseDateIso);
+
+    // Use the backward-only function that only calculates dates before the changed date
+    const dates = process_dates_backward_only(baseField, baseDateIso);
+
+    if (Object.keys(dates).length > 0) {
+      // Only update dates that were calculated (dates before the changed date)
+      // Preserve dates that come after the changed date
+      if (dates.dispatch_date) {
+        setValue('dispatchDate', parseLocalDate(dates.dispatch_date));
+      }
+      if (dates.packaging_date) {
+        setValue('packagingDate', parseLocalDate(dates.packaging_date));
+      }
+      if (dates.pdi_date) {
+        setValue('pdiDate', parseLocalDate(dates.pdi_date));
+      }
+      if (dates.internal_inspection_date) {
+        setValue('inspectionDate', parseLocalDate(dates.internal_inspection_date));
+      }
+      if (dates.curing_date) {
+        setValue('curingDate', parseLocalDate(dates.curing_date));
+      }
+      if (dates.green_belt_date) {
+        setValue('greenBeltDate', parseLocalDate(dates.green_belt_date));
+      }
+      if (dates.calendaring_date) {
+        setValue('calendaringDate', parseLocalDate(dates.calendaring_date));
+      }
+      if (dates.cover_compound_date) {
+        setValue('coverCompoundProducedOn', parseLocalDate(dates.cover_compound_date));
+      }
+      if (dates.skim_compound_date) {
+        setValue('skimCompoundProducedOn', parseLocalDate(dates.skim_compound_date));
+      }
+
+      setHasManualDateEdit(false);
+      manuallyEditedRef.current.clear();
+      lastEditedDateFieldRef.current = null;
+      toast.success('Dates adjusted successfully (only dates before the changed date were updated)');
+    } else {
+      toast.error('Failed to calculate dates');
+    }
+  };
+
   const handleDateChange = (fieldName: keyof BeltFormData, date: Date | undefined) => {
-    manuallyEditedRef.current.add(fieldName);
+    if (isManualEditMode) {
+      // In manual edit mode, track the last edited field and mark as manually edited
+      manuallyEditedRef.current.add(fieldName);
+      lastEditedDateFieldRef.current = fieldName as string;
+      setHasManualDateEdit(true);
+    } else {
+      // In auto mode, just mark as manually edited to prevent auto-calculation
+      manuallyEditedRef.current.add(fieldName);
+    }
     setValue(fieldName, date);
   };
 
@@ -197,6 +305,69 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
   return (
     <Form {...form}>
       <div className="grid gap-y-4">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-semibold">Process Dates</h3>
+          <div className="flex gap-2">
+            {!isManualEditMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsManualEditMode(true);
+                  manuallyEditedRef.current.clear();
+                  setHasManualDateEdit(false);
+                  lastEditedDateFieldRef.current = null;
+                }}
+              >
+                Manually Edit
+              </Button>
+            )}
+            {isManualEditMode && hasManualDateEdit && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleAdjustDates}
+              >
+                Adjust Dates
+              </Button>
+            )}
+            {isManualEditMode && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsManualEditMode(false);
+                  manuallyEditedRef.current.clear();
+                  setHasManualDateEdit(false);
+                  lastEditedDateFieldRef.current = null;
+                  // Recalculate from dispatch date if available
+                  if (dispatchDate) {
+                    const dispatchDateIso = dispatchDate instanceof Date
+                      ? toLocalDateString(dispatchDate)
+                      : dispatchDate;
+                    const dates = process_dates_from_dispatch(dispatchDateIso);
+                    if ('packaging_date' in dates) {
+                      if (dates.packaging_date) setValue('packagingDate', new Date(dates.packaging_date));
+                      if (dates.pdi_date) setValue('pdiDate', new Date(dates.pdi_date));
+                      if (dates.internal_inspection_date) setValue('inspectionDate', new Date(dates.internal_inspection_date));
+                      if (dates.curing_date) setValue('curingDate', new Date(dates.curing_date));
+                      if (dates.green_belt_date) setValue('greenBeltDate', new Date(dates.green_belt_date));
+                      if (dates.calendaring_date) setValue('calendaringDate', new Date(dates.calendaring_date));
+                      if (dates.cover_compound_date) setValue('coverCompoundProducedOn', new Date(dates.cover_compound_date));
+                      if (dates.skim_compound_date) setValue('skimCompoundProducedOn', new Date(dates.skim_compound_date));
+                    }
+                  }
+                }}
+              >
+                Auto Mode
+              </Button>
+            )}
+          </div>
+        </div>
+
         <FormField
           control={control}
           name="dispatchDate"
@@ -219,7 +390,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="packagingDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Packaging Date (Auto-calculated)</FormLabel>
+              <FormLabel>Packaging Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -236,7 +407,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="pdiDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>PDI Date (Auto-calculated)</FormLabel>
+              <FormLabel>PDI Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -253,7 +424,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="inspectionDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Inspection Date (Auto-calculated)</FormLabel>
+              <FormLabel>Inspection Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -283,7 +454,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="curingDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Curing (Press) Date (Auto-calculated)</FormLabel>
+              <FormLabel>Curing (Press) Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -313,7 +484,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="greenBeltDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Green Belt Date (Auto-calculated)</FormLabel>
+              <FormLabel>Green Belt Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -343,7 +514,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="calendaringDate"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Calendaring Date (Auto-calculated)</FormLabel>
+              <FormLabel>Calendaring Date {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -373,7 +544,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="coverCompoundProducedOn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Cover Compound Produced On (Auto-calculated)</FormLabel>
+              <FormLabel>Cover Compound Produced On {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
@@ -390,7 +561,7 @@ export const ProductionDatesStep = ({ form, onNext, onBack }: ProductionDatesSte
           name="skimCompoundProducedOn"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Skim Compound Produced On (Auto-calculated)</FormLabel>
+              <FormLabel>Skim Compound Produced On {!isManualEditMode && '(Auto-calculated)'}</FormLabel>
               <FormControl>
                 <DatePicker
                   date={field.value}
