@@ -126,48 +126,7 @@ async function updateCompoundDatesHandler(_request: NextRequest) {
           continue;
         }
 
-        // Check if the date is already the same (no update needed)
-        if (existingBatch.date === calendaringDate) {
-          // Still update history records even if batch date is already correct
-          const historyResult = await CompoundHistory.updateMany(
-            { batchId: batchId },
-            { $set: { date: calendaringDate } }
-          );
-
-          if (historyResult.modifiedCount > 0) {
-            updatedHistoryRecords += historyResult.modifiedCount;
-          }
-          continue;
-        }
-
-        // Check if another batch already has this date (unique constraint)
-        const batchWithSameDate = await CompoundBatch.findOne({
-          date: calendaringDate,
-          _id: { $ne: batchId },
-        });
-
-        if (batchWithSameDate) {
-          skippedBatches++;
-          const existingBatchId = batchWithSameDate._id
-            ? batchWithSameDate._id.toString()
-            : 'unknown';
-          skippedBatchDetails.push({
-            batchId: batchIdStr,
-            reason: `Date ${calendaringDate} already exists for batch ${existingBatchId}`,
-          });
-          // Still update history records
-          const historyResult = await CompoundHistory.updateMany(
-            { batchId: batchId },
-            { $set: { date: calendaringDate } }
-          );
-
-          if (historyResult.modifiedCount > 0) {
-            updatedHistoryRecords += historyResult.modifiedCount;
-          }
-          continue;
-        }
-
-        // Safe to update - no duplicate date conflict
+        // Update the batch date (no duplicate date check)
         const batchResult = await CompoundBatch.updateOne(
           { _id: batchId },
           { $set: { date: calendaringDate } }
@@ -187,22 +146,13 @@ async function updateCompoundDatesHandler(_request: NextRequest) {
           updatedHistoryRecords += historyResult.modifiedCount;
         }
       } catch (error) {
-        // Handle duplicate key error or other errors for this specific batch
-        if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
-          skippedBatches++;
-          skippedBatchDetails.push({
-            batchId: batchIdStr,
-            reason: `Duplicate date constraint: ${calendaringDate} already exists`,
-          });
-        } else {
-          // Log unexpected errors but continue with other batches
-          console.error(`Error updating batch ${batchIdStr}:`, error);
-          skippedBatches++;
-          skippedBatchDetails.push({
-            batchId: batchIdStr,
-            reason: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
+        // Log unexpected errors but continue with other batches
+        console.error(`Error updating batch ${batchIdStr}:`, error);
+        skippedBatches++;
+        skippedBatchDetails.push({
+          batchId: batchIdStr,
+          reason: error instanceof Error ? error.message : 'Unknown error',
+        });
 
         // Still try to update history records even if batch update failed
         try {
@@ -223,7 +173,7 @@ async function updateCompoundDatesHandler(_request: NextRequest) {
 
     const hasSkippedBatches = skippedBatches > 0;
     const message = hasSkippedBatches
-      ? `Compound dates updated with ${skippedBatches} batch(es) skipped due to duplicate date constraints`
+      ? `Compound dates updated with ${skippedBatches} batch(es) skipped`
       : 'Compound dates updated successfully';
 
     return NextResponse.json<ApiResponse>(

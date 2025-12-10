@@ -165,6 +165,15 @@ export async function createBelt(
     session
   );
 
+  // Format calendaring date for batch creation
+  const batchDate = formData.calendaringDate
+    ? formatLocalDate(
+        formData.calendaringDate instanceof Date
+          ? formData.calendaringDate
+          : new Date(formData.calendaringDate)
+      )
+    : undefined;
+
   // Format producedOn dates if provided
   const coverProducedOn = formData.coverCompoundProducedOn
     ? formatLocalDate(
@@ -189,7 +198,8 @@ export async function createBelt(
     preferredDate,
     session,
     coverProducedOn,
-    'cover'
+    'cover',
+    batchDate // Pass calendaring date as batchDate
   );
 
   // Consume skim compound
@@ -199,7 +209,8 @@ export async function createBelt(
     preferredDate,
     session,
     skimProducedOn,
-    'skim'
+    'skim',
+    batchDate // Pass calendaring date as batchDate
   );
 
   // Helper function to parse number from string or number

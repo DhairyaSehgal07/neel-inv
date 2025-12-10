@@ -75,7 +75,8 @@ async function findNextFreeDate(preferredDate: string, session?: ClientSession):
 export async function generateCompoundBatch(
   compoundCode: string,
   preferredDate: string,
-  session?: ClientSession
+  session?: ClientSession,
+  batchDate?: string // Optional: specific date to use for the batch (e.g., calendaring date)
 ): Promise<CompoundBatchDoc> {
   // Get compound master record to determine weightPerBatch and name
   const masterQuery = CompoundMaster.findOne({ compoundCode });
@@ -95,8 +96,13 @@ export async function generateCompoundBatch(
   const batches = getRandomBatchCount();
   const totalInventory = batches * weightPerBatch;
 
-  // Find next free date (global uniqueness)
-  let dateToUse = await findNextFreeDate(preferredDate, session);
+  // Use batchDate if provided, otherwise find next free date
+  let dateToUse: string;
+  if (batchDate) {
+    dateToUse = batchDate;
+  } else {
+    dateToUse = await findNextFreeDate(preferredDate, session);
+  }
   let attempts = 0;
   const maxAttempts = 365;
 
@@ -159,7 +165,8 @@ export async function consumeCompound(
   preferredDate: string,
   session?: ClientSession,
   producedOn?: string, // YYYY-MM-DD - date when compound was produced/used
-  compoundType?: 'cover' | 'skim' // Indicates if this is for cover or skim compound
+  compoundType?: 'cover' | 'skim', // Indicates if this is for cover or skim compound
+  batchDate?: string // Optional: specific date to use when creating new batches (e.g., calendaring date)
 ): Promise<ConsumeResult> {
   let remaining = requiredKg;
   const batchesUsed: BatchUsage[] = [];
@@ -179,7 +186,7 @@ export async function consumeCompound(
         );
       }
 
-      batch = await generateCompoundBatch(compoundCode, preferredDate, session);
+      batch = await generateCompoundBatch(compoundCode, preferredDate, session, batchDate);
       daysCreated++;
 
       // Update preferredDate for next iteration (if needed)
