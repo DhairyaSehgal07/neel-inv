@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.15](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.14...v0.1.15) (2025-01-31)
+
+
+### Code Refactoring
+
+* update compound batch date constraints and batch creation logic ([d4f561c](https://github.com/DhairyaSehgal07/neel-inv/commit/d4f561c))
+  * remove unique constraint on batch date field to allow multiple batches per day
+  * add unique sparse indexes on coverCompoundProducedOn and skimCompoundProducedOn
+  * add validation to prevent cover and skim dates from conflicting
+  * simplify update-dates route by removing duplicate date checks
+  * add batchDate parameter to compound service to use calendaring date for new batches
+  * update belt service to pass calendaring date when creating compound batches
+
 ### [0.1.14](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.13...v0.1.14) (2025-11-30)
 
 
