@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ApiResponse } from '@/types/apiResponse';
 import { BeltFormData } from '@/types/belt';
 import { BeltDoc } from '@/model/Belt';
+import { AxiosError } from 'axios';
 
 interface FetchBeltsParams {
   status?: string;
@@ -74,11 +75,25 @@ interface UpdateBeltPayload {
 }
 
 async function updateBeltClient(id: string, payload: UpdateBeltPayload): Promise<BeltDoc> {
-  const response = await api.put<ApiResponse<BeltDoc>>(`/api/belts/${id}`, payload);
-  if (!response.data.success) {
-    throw new Error(response.data.message || 'Failed to update belt');
+  try {
+    const response = await api.put<ApiResponse<BeltDoc>>(`/api/belts/${id}`, payload);
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Failed to update belt');
+    }
+    return response.data.data!;
+  } catch (error) {
+    // Handle axios errors (4xx, 5xx status codes)
+    if (error instanceof AxiosError && error.response?.data) {
+      const apiResponse = error.response.data as ApiResponse;
+      throw new Error(apiResponse.message || 'Failed to update belt');
+    }
+    // Re-throw if it's already an Error with a message
+    if (error instanceof Error) {
+      throw error;
+    }
+    // Fallback for unknown errors
+    throw new Error('Failed to update belt');
   }
-  return response.data.data!;
 }
 
 export function useUpdateBeltMutation() {

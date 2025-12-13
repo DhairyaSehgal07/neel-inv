@@ -291,48 +291,124 @@ async function updateBeltHandler(
 
       // Update cover batches if coverCompoundProducedOn is being updated
       if (coverProducedOnDate !== undefined && coverBatchIds.length > 0) {
-        const coverBatchUpdate = {
-          $set: {
-            coverCompoundProducedOn: coverProducedOnDate,
-          },
-        };
+        // Check if the date already exists in other CompoundBatch documents (cover or skim)
+        // Excluding batches that are being updated (they might already have this date, which is fine)
+        const existingBatchWithCoverDate = await CompoundBatch.findOne({
+          coverCompoundProducedOn: coverProducedOnDate,
+          _id: { $nin: coverBatchIds },
+        }).session(session);
 
-        // Update CompoundBatch records
-        await CompoundBatch.updateMany(
-          { _id: { $in: coverBatchIds } },
-          coverBatchUpdate,
-          { session }
-        );
+        const existingBatchWithSkimDate = await CompoundBatch.findOne({
+          skimCompoundProducedOn: coverProducedOnDate,
+        }).session(session);
 
-        // Update CompoundHistory records for these batches
-        await CompoundHistory.updateMany(
-          { batchId: { $in: coverBatchIds } },
-          coverBatchUpdate,
-          { session }
-        );
+        if (existingBatchWithCoverDate || existingBatchWithSkimDate) {
+          // Skip updating if date already exists in another batch (not being updated)
+          // This prevents duplicate key errors
+          if (existingBatchWithCoverDate) {
+            console.warn(
+              `Skipping coverCompoundProducedOn update: date ${coverProducedOnDate} already exists in coverCompoundProducedOn for batch ${existingBatchWithCoverDate._id}`
+            );
+          } else if (existingBatchWithSkimDate) {
+            console.warn(
+              `Skipping coverCompoundProducedOn update: date ${coverProducedOnDate} already exists in skimCompoundProducedOn for batch ${existingBatchWithSkimDate._id}`
+            );
+          }
+        } else {
+          // Filter out batches that already have the target date to avoid unnecessary updates
+          const batchesToUpdate = await CompoundBatch.find({
+            _id: { $in: coverBatchIds },
+            $or: [
+              { coverCompoundProducedOn: { $ne: coverProducedOnDate } },
+              { coverCompoundProducedOn: { $exists: false } },
+            ],
+          }).session(session);
+
+          const batchIdsToUpdate = batchesToUpdate.map((b) => b._id);
+
+          if (batchIdsToUpdate.length > 0) {
+            const coverBatchUpdate = {
+              $set: {
+                coverCompoundProducedOn: coverProducedOnDate,
+              },
+            };
+
+            // Update CompoundBatch records (only those that need updating)
+            await CompoundBatch.updateMany(
+              { _id: { $in: batchIdsToUpdate } },
+              coverBatchUpdate,
+              { session }
+            );
+
+            // Update CompoundHistory records for these batches
+            await CompoundHistory.updateMany(
+              { batchId: { $in: batchIdsToUpdate } },
+              coverBatchUpdate,
+              { session }
+            );
+          }
+        }
       }
 
       // Update skim batches if skimCompoundProducedOn is being updated
       if (skimProducedOnDate !== undefined && skimBatchIds.length > 0) {
-        const skimBatchUpdate = {
-          $set: {
-            skimCompoundProducedOn: skimProducedOnDate,
-          },
-        };
+        // Check if the date already exists in other CompoundBatch documents (skim or cover)
+        // Excluding batches that are being updated (they might already have this date, which is fine)
+        const existingBatchWithSkimDate = await CompoundBatch.findOne({
+          skimCompoundProducedOn: skimProducedOnDate,
+          _id: { $nin: skimBatchIds },
+        }).session(session);
 
-        // Update CompoundBatch records
-        await CompoundBatch.updateMany(
-          { _id: { $in: skimBatchIds } },
-          skimBatchUpdate,
-          { session }
-        );
+        const existingBatchWithCoverDate = await CompoundBatch.findOne({
+          coverCompoundProducedOn: skimProducedOnDate,
+        }).session(session);
 
-        // Update CompoundHistory records for these batches
-        await CompoundHistory.updateMany(
-          { batchId: { $in: skimBatchIds } },
-          skimBatchUpdate,
-          { session }
-        );
+        if (existingBatchWithSkimDate || existingBatchWithCoverDate) {
+          // Skip updating if date already exists in another batch (not being updated)
+          // This prevents duplicate key errors
+          if (existingBatchWithSkimDate) {
+            console.warn(
+              `Skipping skimCompoundProducedOn update: date ${skimProducedOnDate} already exists in skimCompoundProducedOn for batch ${existingBatchWithSkimDate._id}`
+            );
+          } else if (existingBatchWithCoverDate) {
+            console.warn(
+              `Skipping skimCompoundProducedOn update: date ${skimProducedOnDate} already exists in coverCompoundProducedOn for batch ${existingBatchWithCoverDate._id}`
+            );
+          }
+        } else {
+          // Filter out batches that already have the target date to avoid unnecessary updates
+          const batchesToUpdate = await CompoundBatch.find({
+            _id: { $in: skimBatchIds },
+            $or: [
+              { skimCompoundProducedOn: { $ne: skimProducedOnDate } },
+              { skimCompoundProducedOn: { $exists: false } },
+            ],
+          }).session(session);
+
+          const batchIdsToUpdate = batchesToUpdate.map((b) => b._id);
+
+          if (batchIdsToUpdate.length > 0) {
+            const skimBatchUpdate = {
+              $set: {
+                skimCompoundProducedOn: skimProducedOnDate,
+              },
+            };
+
+            // Update CompoundBatch records (only those that need updating)
+            await CompoundBatch.updateMany(
+              { _id: { $in: batchIdsToUpdate } },
+              skimBatchUpdate,
+              { session }
+            );
+
+            // Update CompoundHistory records for these batches
+            await CompoundHistory.updateMany(
+              { batchId: { $in: batchIdsToUpdate } },
+              skimBatchUpdate,
+              { session }
+            );
+          }
+        }
       }
 
       // Update BatchUsage arrays in the belt if dates are provided
@@ -418,6 +494,20 @@ async function updateBeltHandler(
 
     // Handle duplicate key errors (MongoDB duplicate key error)
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
+      const mongoError = error as { keyPattern?: Record<string, number>; keyValue?: Record<string, unknown> };
+
+      // Check if it's a CompoundBatch duplicate key error
+      if (mongoError.keyPattern && (mongoError.keyPattern.coverCompoundProducedOn || mongoError.keyPattern.skimCompoundProducedOn)) {
+        const fieldName = mongoError.keyPattern.coverCompoundProducedOn ? 'coverCompoundProducedOn' : 'skimCompoundProducedOn';
+        const dateValue = mongoError.keyValue?.[fieldName];
+        const response: ApiResponse = {
+          success: false,
+          message: `The compound production date ${dateValue} already exists in another batch. Please use a different date.`,
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      // Default to belt number duplicate error
       const response: ApiResponse = {
         success: false,
         message: 'Belt with this number already exists',

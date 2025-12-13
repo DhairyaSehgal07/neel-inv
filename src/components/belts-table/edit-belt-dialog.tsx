@@ -276,8 +276,9 @@ function EditBeltFormContent({
       toast.success('Belt updated successfully');
       onClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      toast.error(`Failed to update belt: ${errorMessage}`);
+      // Extract the exact error message from the API response
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred while updating the belt';
+      toast.error(errorMessage);
     }
   };
 

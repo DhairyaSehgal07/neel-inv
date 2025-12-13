@@ -60,7 +60,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Width',
     cell: ({ row }) => {
       const width = row.original.beltWidthMm;
-      return width ? `${roundToNearest5(Number(width)).toFixed(2)} mm` : '-';
+      return width ? `${roundToNearest5(Number(width))} mm` : '-';
     },
   },
   {
@@ -112,7 +112,7 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
     header: 'Length',
     cell: ({ row }) => {
       const length = row.original.beltLengthM;
-      return length ? `${length.toFixed(2)} m` : '-';
+      return length ? `${length} m` : '-';
     },
   },
   {

@@ -41,11 +41,7 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
     }
   };
 
-  const formatCompoundCode = (
-    code?: string,
-    producedOn?: string,
-    consumedOn?: string
-  ) => {
+  const formatCompoundCode = (code?: string, producedOn?: string, consumedOn?: string) => {
     if (!code) return '-';
     // Use producedOn date if available, otherwise fall back to consumedOn date
     const dateToUse = producedOn || consumedOn;
@@ -96,17 +92,26 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
           <div>
             <h3 className="text-lg font-semibold mb-4">Belt Specifications</h3>
             <div className="space-y-1">
-              <DetailRow label="Length" value={belt.beltLengthM ? `${roundToNearest5(Number(belt.beltLengthM)).toFixed(2)} m` : '-'} />
-              <DetailRow label="Width" value={belt.beltWidthMm ? `${roundToNearest5(Number(belt.beltWidthMm)).toFixed(2)} mm` : '-'} />
+              <DetailRow
+                label="Length"
+                value={belt.beltLengthM ? `${roundToNearest5(Number(belt.beltLengthM))} m` : '-'}
+              />
+              <DetailRow
+                label="Width"
+                value={belt.beltWidthMm ? `${roundToNearest5(Number(belt.beltWidthMm))} mm` : '-'}
+              />
               <DetailRow
                 label="Top Cover"
-                value={belt.topCoverMm ? `${roundToNearest5(Number(belt.topCoverMm)).toFixed(2)} mm` : '-'}
+                value={belt.topCoverMm ? `${Number(belt.topCoverMm).toFixed(2)} mm` : '-'}
               />
               <DetailRow
                 label="Bottom Cover"
-                value={belt.bottomCoverMm ? `${roundToNearest5(Number(belt.bottomCoverMm)).toFixed(2)} mm` : '-'}
+                value={belt.bottomCoverMm ? `${Number(belt.bottomCoverMm).toFixed(2)} mm` : '-'}
               />
-              <DetailRow label="Carcass" value={belt.carcassMm ? `${roundToNearest5(Number(belt.carcassMm)).toFixed(2)} mm` : '-'} />
+              <DetailRow
+                label="Carcass"
+                value={belt.carcassMm ? `${Number(belt.carcassMm).toFixed(2)} mm` : '-'}
+              />
             </div>
           </div>
 
