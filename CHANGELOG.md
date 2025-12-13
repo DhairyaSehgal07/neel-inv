@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.16](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.15...v0.1.16) (2025-12-13)
+
+
+### Features
+
+* add delete belt by number API endpoint and improve belt management ([a4e8859](https://github.com/DhairyaSehgal07/neel-inv/commit/a4e8859464eb561d39fdf50ee7bc3a9f5cf5536c))
+
 ### [0.1.15](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.14...v0.1.15) (2025-12-10)
 
 
