@@ -1,11 +1,11 @@
 'use client';
-
 import { useBeltsQuery } from '@/services/api/queries/belts/clientBelts';
 import { DataTable } from '../ui/data-table';
 import { columns } from './columns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
+import { BeltsPDFReportButton } from './BeltsPDFReport';
 
 export default function BeltsTable() {
   const router = useRouter();
@@ -20,7 +20,10 @@ export default function BeltsTable() {
       <div className="space-y-4">
         <div className="flex justify-between">
           <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+          </div>
         </div>
         <Skeleton className="h-96 w-full" />
       </div>
@@ -32,7 +35,9 @@ export default function BeltsTable() {
       <div className="space-y-4">
         <div className="flex justify-between">
           <h2 className="text-xl font-semibold">Belts</h2>
-          <Button onClick={handleAddBelt}>Add Belt</Button>
+          <div className="flex gap-2">
+            <Button onClick={handleAddBelt}>Add Belt</Button>
+          </div>
         </div>
         <div className="text-destructive">Error loading belts: {error.message}</div>
       </div>
@@ -41,11 +46,13 @@ export default function BeltsTable() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Belts</h2>
-        <Button onClick={handleAddBelt}>Add Belt</Button>
+        <div className="flex gap-2">
+          <BeltsPDFReportButton belts={data || []} />
+          <Button onClick={handleAddBelt}>Add Belt</Button>
+        </div>
       </div>
-
       <DataTable
         columns={columns}
         data={data || []}

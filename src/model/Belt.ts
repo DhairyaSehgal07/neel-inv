@@ -9,6 +9,15 @@ export interface BatchUsage {
   skimCompoundProducedOn?: string;
 }
 
+export interface FabricUsage {
+  type: 'NN' | 'EP' | 'EE' | string;
+  rating: string;              // e.g. "500/3"
+  strength: number;            // e.g. 160
+  supplier?: string;           // optional
+  rollNumber?: string | string[];
+  consumedMeters?: number;
+}
+
 export interface BeltDoc extends Document {
   beltNumber: string;
   rating?: string;
@@ -47,6 +56,8 @@ export interface BeltDoc extends Document {
   entryType: 'Manual' | 'Auto';
   createdAt: Date;
   updatedAt: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fabric:any
 }
 
 const BatchUsageSchema = new Schema(
