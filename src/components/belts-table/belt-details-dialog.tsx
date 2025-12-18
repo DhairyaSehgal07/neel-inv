@@ -5,7 +5,6 @@ import { BeltDoc } from '@/model/Belt';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { FabricInfo } from '@/types/belt';
-import { useSession } from 'next-auth/react';
 import { roundToNearest5 } from '@/lib/utils';
 
 interface BeltDetailsDialogProps {
@@ -28,8 +27,6 @@ const DetailRow = ({
 );
 
 export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDetailsDialogProps) {
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'Admin';
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
@@ -123,12 +120,6 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
             <div className="space-y-1">
               <DetailRow label="Order Number" value={belt.orderNumber || '-'} />
               <DetailRow label="Buyer Name" value={belt.buyerName || '-'} />
-              {isAdmin && (
-                <>
-                  <DetailRow label="Order Date" value={formatDate(belt.orderDate)} />
-                  <DetailRow label="Delivery Deadline" value={formatDate(belt.deliveryDeadline)} />
-                </>
-              )}
             </div>
           </div>
 

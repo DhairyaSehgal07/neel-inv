@@ -44,10 +44,31 @@ async function seedUsers() {
     } else {
       console.log('✅ Manager user already exists');
     }
+
+
+
+    const existingOperator = await UserModel.findOne({ role: 'Operator' });
+    if (!existingOperator) {
+      const operatorUser = new UserModel({
+        name: 'Operator',
+        mobileNumber: '9877741375',
+        password: hashedPassword2,
+        role: 'Operator',
+        isActive: true
+      });
+
+      await operatorUser.save();
+      console.log("🌱 Operator user seeded successfully");
+    } else {
+      console.log("✅ Operator user already exists");
+    }
+
   } catch (error) {
     console.error('❌ Error seeding users:', error);
   }
 }
+
+
 
 async function dbConnect(): Promise<void> {
   if (connection.isConnected) {
