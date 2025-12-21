@@ -1,12 +1,13 @@
-import React from 'react';
-import { GeneratedForm } from '@/components/belt-form';
+
+import { ManualBeltForm } from '@/components/belt-form/manual'
+import React from 'react'
 
 const page = () => {
   return (
     <div>
-      <GeneratedForm />
+      <ManualBeltForm/>
     </div>
-  );
-};
+  )
+}
 
-export default page;
+export default page

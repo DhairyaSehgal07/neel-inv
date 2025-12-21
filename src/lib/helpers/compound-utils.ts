@@ -4,7 +4,7 @@
 
 import { addDays, format, parseISO } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
-import { random_value_80_90 } from './calculations';
+import { random_value_100_110 } from './calculations';
 
 const IST_TIMEZONE = 'Asia/Kolkata';
 
@@ -57,7 +57,7 @@ export function isDuplicateKeyErrorForField(err: unknown, field: string): boolea
  * Get random batch count between 80 and 90
  */
 export function getRandomBatchCount(): number {
-  return random_value_80_90();
+  return random_value_100_110();
 }
 
 /**

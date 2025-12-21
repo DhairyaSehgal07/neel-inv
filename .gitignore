@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+GENERATE_COMPOUNDS_README.md
+
+generate-compounds.js
+
+Belt_Creation_Context.md
+
+belts.json

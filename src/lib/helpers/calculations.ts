@@ -169,11 +169,12 @@ export function skim_batches(skimWeightKg: number, compound?: CompoundKey) {
 
 /**
  * Random range requirement
- * random_value = random_integer(80, 90)
+ * random_value = random_integer(100, 110)
  */
-export function random_value_80_90() {
-  return Math.floor(Math.random() * (90 - 80 + 1)) + 80;
+export function random_value_100_110() {
+  return Math.floor(Math.random() * (110 - 100 + 1)) + 100;
 }
+
 
 /**
  * Machine breakdown:

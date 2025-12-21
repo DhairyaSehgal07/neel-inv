@@ -44,6 +44,7 @@ async function enrichBatchData(
     _id: { $in: batchIds },
   }).lean();
 
+
   // Create a map for quick lookup
   const batchMap = new Map<string, {
     compoundCode: string;

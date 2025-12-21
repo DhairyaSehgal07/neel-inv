@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { Permission, ALL_PERMISSIONS } from "@/lib/rbac/permissions";
 
-export type Role = "Admin" | "Manager" | "Supervisor" | "Worker";
+export type Role = "Admin" | "Manager" | "Operator" | "Worker";
 
 export interface User extends Document {
   name: string;
@@ -36,7 +36,7 @@ const UserSchema: Schema<User> = new Schema(
     },
     role: {
       type: String,
-      enum: ["Admin", "Manager", "Supervisor", "Worker"],
+      enum: ["Admin", "Manager", "Supervisor", "Worker", "Operator"],
       default: "Worker",
     },
     permissions: {
