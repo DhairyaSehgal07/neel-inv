@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import { BeltsPDFReportButton } from './BeltsPDFReport';
+import { MasterBeltReportButton } from './MasterBeltReport';
 import { useSession } from 'next-auth/react';
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -83,6 +84,7 @@ export default function BeltsTable() {
           <h2 className="text-xl font-semibold">Belts</h2>
           <div className="flex gap-2">
             <BeltsPDFReportButton belts={data || []} />
+            <MasterBeltReportButton belts={data || []} />
             <Button onClick={handleAddBelt}>Add Belt</Button>
           </div>
         </div>

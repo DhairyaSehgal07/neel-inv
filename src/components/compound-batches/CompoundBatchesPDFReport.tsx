@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { roundToNearest5 } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 
 interface CompoundBatchesPDFReportProps {
   batches: CompoundBatchDoc[];
@@ -162,19 +163,28 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingExcel, setIsGeneratingExcel] = useState(false);
 
   const handlePreview = async () => {
     setIsGenerating(true);
-    try {
-      const blob = await pdf(<CompoundBatchesPDFDocument batches={batches} />).toBlob();
-      const url = URL.createObjectURL(blob);
-      setPdfUrl(url);
-      setIsPreviewOpen(true);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-    } finally {
-      setIsGenerating(false);
-    }
+    // Use double requestAnimationFrame to ensure loader is painted and animating before heavy work
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        // Add a small delay to ensure animation has started
+        setTimeout(async () => {
+          try {
+            const blob = await pdf(<CompoundBatchesPDFDocument batches={batches} />).toBlob();
+            const url = URL.createObjectURL(blob);
+            setPdfUrl(url);
+            setIsPreviewOpen(true);
+          } catch (error) {
+            console.error('Error generating PDF:', error);
+          } finally {
+            setIsGenerating(false);
+          }
+        }, 50);
+      });
+    });
   };
 
   const handleDownloadPDF = () => {
@@ -188,6 +198,7 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
   };
 
   const handleDownloadXLSX = () => {
+    setIsGeneratingExcel(true);
     try {
       // Prepare data for Excel
       const excelData = batches.map((batch, index) => {
@@ -248,6 +259,8 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error('Error generating XLSX:', error);
+    } finally {
+      setIsGeneratingExcel(false);
     }
   };
 
@@ -262,9 +275,44 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
   return (
     <>
       <Button onClick={handlePreview} disabled={isGenerating} variant="outline">
-        <Eye className="mr-2 h-4 w-4" />
-        {isGenerating ? 'Generating...' : 'View Report'}
+        {isGenerating ? (
+          <>
+            <div className="mr-2 animate-spin" style={{ willChange: 'transform' }}>
+              <Spinner className="h-4 w-4" />
+            </div>
+            Generating...
+          </>
+        ) : (
+          <>
+            <Eye className="mr-2 h-4 w-4" />
+            View Report
+          </>
+        )}
       </Button>
+
+      {/* Loading Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4 shadow-lg">
+            <div className="animate-spin" style={{ willChange: 'transform' }}>
+              <Spinner className="h-8 w-8" />
+            </div>
+            <p className="text-sm font-medium">Generating report...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Excel Loading Overlay */}
+      {isGeneratingExcel && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+          <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-4 shadow-lg">
+            <div className="animate-spin" style={{ willChange: 'transform' }}>
+              <Spinner className="h-8 w-8" />
+            </div>
+            <p className="text-sm font-medium">Generating Excel file...</p>
+          </div>
+        </div>
+      )}
 
       {isPreviewOpen && pdfUrl && (
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
@@ -281,13 +329,24 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={handleDownloadPDF}>
+                    <DropdownMenuItem onClick={handleDownloadPDF} disabled={isGeneratingExcel}>
                       <Download className="mr-2 h-4 w-4" />
                       Download as PDF
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={handleDownloadXLSX}>
-                      <FileDown className="mr-2 h-4 w-4" />
-                      Download as XLSX
+                    <DropdownMenuItem onClick={handleDownloadXLSX} disabled={isGeneratingExcel}>
+                      {isGeneratingExcel ? (
+                        <>
+                          <div className="mr-2 animate-spin" style={{ willChange: 'transform' }}>
+                            <Spinner className="h-4 w-4" />
+                          </div>
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <FileDown className="mr-2 h-4 w-4" />
+                          Download as XLSX
+                        </>
+                      )}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 import { Button } from '@/components/ui/button';
-import { BeltDoc } from '@/model/Belt';
 import { Eye, X, Download, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -10,18 +9,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { roundToNearest5 } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
+import { CompoundMasterReportData } from '@/services/api/queries/compounds/clientCompoundMasterReport';
 
-
-
-interface BeltsPDFReportProps {
-  belts: BeltDoc[];
+interface CompoundMasterReportProps {
+  data: CompoundMasterReportData[];
 }
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
-    fontSize: 9,
+    padding: 20,
+    fontSize: 8,
   },
   header: {
     marginBottom: 20,
@@ -46,7 +45,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#000',
     paddingVertical: 8,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
     fontWeight: 'bold',
   },
   tableRow: {
@@ -54,19 +53,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: '#e5e7eb',
     paddingVertical: 6,
-    paddingHorizontal: 4,
+    paddingHorizontal: 8,
   },
-  col1: { width: '8%', fontSize: 8 },
-  col2: { width: '9%', fontSize: 8 },
-  col3: { width: '8%', fontSize: 8 },
-  col4: { width: '11%', fontSize: 8 },
-  col5: { width: '10%', fontSize: 8 },
-  col6: { width: '8%', fontSize: 8 },
-  col7: { width: '9%', fontSize: 8 },
-  col8: { width: '11%', fontSize: 8 },
-  col9: { width: '9%', fontSize: 8 },
-  col10: { width: '9%', fontSize: 8 },
-  col11: { width: '8%', fontSize: 8 },
+  col1: { width: '5%', fontSize: 7 }, // S.No.
+  col2: { width: '12%', fontSize: 7 }, // Compound Code
+  col3: { width: '15%', fontSize: 7 }, // Compound Name
+  col4: { width: '10%', fontSize: 7 }, // Produced On
+  col5: { width: '10%', fontSize: 7 }, // Consumed On
+  col6: { width: '8%', fontSize: 7 }, // Number of Batches
+  col7: { width: '10%', fontSize: 7 }, // Weight per Batch
+  col8: { width: '10%', fontSize: 7 }, // Total Inventory
+  col9: { width: '10%', fontSize: 7 }, // Remaining
+  col10: { width: '10%', fontSize: 7 }, // Belt Numbers
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -78,7 +76,31 @@ const styles = StyleSheet.create({
   },
 });
 
-const BeltsPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
+// Helper function to safely format date
+const formatDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return 'N/A';
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  } catch {
+    return 'N/A';
+  }
+};
+
+// Helper function to format compound code like nk5-20251029
+const formatCompoundCode = (code: string, producedOn: string | null): string => {
+  if (!code) return 'N/A';
+  if (!producedOn) return code;
+  // Format date from YYYY-MM-DD to YYYYMMDD (remove dashes)
+  const formattedDate = producedOn.replace(/-/g, '');
+  return `${code}-${formattedDate}`;
+};
+
+const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> = ({ data }) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'long',
@@ -89,51 +111,56 @@ const BeltsPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
     <Document>
       <Page size="A4" orientation="landscape" style={styles.page}>
         <View style={styles.header}>
-          <Text style={styles.title}>Neelkanthrubber Mills Belts Report</Text>
+          <Text style={styles.title}>Neelkanthrubber Mills Compound Master Report</Text>
           <Text style={styles.date}>{currentDate}</Text>
         </View>
 
         <View style={styles.table}>
+          {/* Main Header Row */}
           <View style={styles.tableHeader}>
             <Text style={styles.col1}>S.No.</Text>
-            <Text style={styles.col2}>Belt No.</Text>
-            <Text style={styles.col3}>Width</Text>
-            <Text style={styles.col4}>Belt Rating</Text>
-            <Text style={styles.col5}>Fabric Type</Text>
-            <Text style={styles.col6}>Top</Text>
-            <Text style={styles.col7}>Bottom</Text>
-            <Text style={styles.col8}>Cover Grade</Text>
-            <Text style={styles.col9}>Edge</Text>
-            <Text style={styles.col10}>Length</Text>
-            <Text style={styles.col11}>Status</Text>
+            <Text style={styles.col2}>Compound Code</Text>
+            <Text style={styles.col3}>Compound Name</Text>
+            <Text style={styles.col4}>Produced On</Text>
+            <Text style={styles.col5}>Consumed On</Text>
+            <Text style={styles.col6}>Batches</Text>
+            <Text style={styles.col7}>Weight/Batch (kg)</Text>
+            <Text style={styles.col8}>Total Inventory (kg)</Text>
+            <Text style={styles.col9}>Remaining (kg)</Text>
+            <Text style={styles.col10}>Belt Numbers</Text>
           </View>
 
-          {belts.map((belt, index) => (
-            <View key={belt.beltNumber} style={styles.tableRow}>
-              <Text style={styles.col1}>{index + 1}</Text>
-              <Text style={styles.col2}>{belt.beltNumber}</Text>
-              <Text style={styles.col3}>{belt.beltWidthMm}</Text>
-              <Text style={styles.col4}>{belt.rating}</Text>
-              <Text style={styles.col5}>{belt.fabric?.type || 'N/A'}</Text>
-              <Text style={styles.col6}>{belt.topCoverMm}</Text>
-              <Text style={styles.col7}>{belt.bottomCoverMm}</Text>
-              <Text style={styles.col8}>{belt.coverGrade}</Text>
-              <Text style={styles.col9}>{belt.edge}</Text>
-              <Text style={styles.col10}>{belt.beltLengthM}</Text>
-              <Text style={styles.col11}>{belt.status}</Text>
-            </View>
-          ))}
+          {data.map((row, index) => {
+            // Create unique key from compoundCode and producedOn
+            const uniqueKey = `${row.compoundCode}-${row.producedOn || row.consumedOn || index}`;
+            return (
+              <View key={uniqueKey} style={styles.tableRow}>
+                <Text style={styles.col1}>{index + 1}</Text>
+                <Text style={styles.col2}>{formatCompoundCode(row.compoundCode, row.producedOn)}</Text>
+                <Text style={styles.col3}>{row.compoundName}</Text>
+                <Text style={styles.col4}>{formatDate(row.producedOn)}</Text>
+                <Text style={styles.col5}>{formatDate(row.consumedOn)}</Text>
+                <Text style={styles.col6}>{row.numberOfBatches}</Text>
+                <Text style={styles.col7}>{roundToNearest5(row.weightPerBatch).toFixed(2)}</Text>
+                <Text style={styles.col8}>{roundToNearest5(row.totalInventory).toFixed(2)}</Text>
+                <Text style={styles.col9}>{roundToNearest5(row.remaining).toFixed(2)}</Text>
+                <Text style={styles.col10}>
+                  {row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A'}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         <Text style={styles.footer}>
-          Generated on {new Date().toLocaleString('en-IN')} | Total Belts: {belts.length}
+          Generated on {new Date().toLocaleString('en-IN')} | Total Batches: {data.length}
         </Text>
       </Page>
     </Document>
   );
 };
 
-export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) => {
+export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = ({ data }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -147,7 +174,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
         // Add a small delay to ensure animation has started
         setTimeout(async () => {
           try {
-            const blob = await pdf(<BeltsPDFDocument belts={belts} />).toBlob();
+            const blob = await pdf(<CompoundMasterPDFDocument data={data} />).toBlob();
             const url = URL.createObjectURL(blob);
             setPdfUrl(url);
             setIsPreviewOpen(true);
@@ -163,7 +190,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
 
   const handleDownloadPDF = () => {
     if (pdfUrl) {
-      const fileName = `Belts_Report_${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `Compound_Master_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = fileName;
@@ -175,18 +202,17 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
     setIsGeneratingExcel(true);
     try {
       // Prepare data for Excel
-      const excelData = belts.map((belt, index) => ({
+      const excelData = data.map((row, index) => ({
         'S.No.': index + 1,
-        'Belt No.': belt.beltNumber,
-        'Width (mm)': belt.beltWidthMm || '',
-        'Belt Rating': belt.rating || '',
-        'Fabric Type': belt.fabric?.type || 'N/A',
-        'Top Cover (mm)': belt.topCoverMm || '',
-        'Bottom Cover (mm)': belt.bottomCoverMm || '',
-        'Cover Grade': belt.coverGrade || '',
-        'Edge': belt.edge || '',
-        'Length (m)': belt.beltLengthM || '',
-        'Status': belt.status || '',
+        'Compound Code': formatCompoundCode(row.compoundCode, row.producedOn),
+        'Compound Name': row.compoundName,
+        'Produced On': formatDate(row.producedOn),
+        'Consumed On': formatDate(row.consumedOn),
+        'Batches': row.numberOfBatches,
+        'Weight per Batch (kg)': roundToNearest5(row.weightPerBatch).toFixed(2),
+        'Total Inventory (kg)': roundToNearest5(row.totalInventory).toFixed(2),
+        'Remaining (kg)': roundToNearest5(row.remaining).toFixed(2),
+        'Belt Numbers': row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A',
       }));
 
       // Create workbook and worksheet
@@ -196,24 +222,23 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
       // Set column widths
       const colWidths = [
         { wch: 8 },  // S.No.
-        { wch: 12 }, // Belt No.
-        { wch: 12 }, // Width
-        { wch: 12 }, // Belt Rating
-        { wch: 12 }, // Fabric Type
-        { wch: 12 }, // Top
-        { wch: 15 }, // Bottom
-        { wch: 12 }, // Cover Grade
-        { wch: 10 }, // Edge
-        { wch: 12 }, // Length
-        { wch: 12 }, // Status
+        { wch: 20 }, // Compound Code
+        { wch: 25 }, // Compound Name
+        { wch: 15 }, // Produced On
+        { wch: 15 }, // Consumed On
+        { wch: 15 }, // Number of Batches
+        { wch: 18 }, // Weight per Batch
+        { wch: 20 }, // Total Inventory
+        { wch: 15 }, // Remaining
+        { wch: 30 }, // Belt Numbers
       ];
       ws['!cols'] = colWidths;
 
       // Add worksheet to workbook
-      XLSX.utils.book_append_sheet(wb, ws, 'Belts Report');
+      XLSX.utils.book_append_sheet(wb, ws, 'Compound Master Report');
 
       // Generate Excel file
-      const fileName = `Belts_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `Compound_Master_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(wb, fileName);
     } catch (error) {
       console.error('Error generating XLSX:', error);
@@ -243,7 +268,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
         ) : (
           <>
             <Eye className="mr-2 h-4 w-4" />
-            View Report
+            View Master Compound
           </>
         )}
       </Button>
@@ -277,7 +302,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
           <div className="bg-white rounded-lg w-full max-w-6xl h-[90vh] flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-lg font-semibold">Belts Report Preview</h2>
+              <h2 className="text-lg font-semibold">Compound Master Report Preview</h2>
               <div className="flex gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
