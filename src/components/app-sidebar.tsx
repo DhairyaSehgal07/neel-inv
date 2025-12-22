@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Layers, Package } from 'lucide-react';
+import { Settings, Layers, Package, FileText } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -30,6 +30,12 @@ const navigationItems = [
     href: '/dashboard/compounds',
     icon: Layers,
     activePaths: ['/dashboard/compounds', '/dashboard/compounds/create'],
+  },
+  {
+    name: 'Reports',
+    href: '/dashboard/reports',
+    icon: FileText,
+    activePaths: ['/dashboard/reports'],
   },
   {
     name: 'Settings',

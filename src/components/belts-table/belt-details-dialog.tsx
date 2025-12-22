@@ -27,7 +27,6 @@ const DetailRow = ({
 );
 
 export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDetailsDialogProps) {
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
     try {
@@ -253,10 +252,10 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                                 <span>{formatDate(batch.coverCompoundProducedOn)}</span>
                               </>
                             )}
-                            {batch.date && (
+                            {belt.process?.calendaringDate && (
                               <>
                                 <span className="text-muted-foreground">Consumed On:</span>
-                                <span>{formatDate(batch.date)}</span>
+                                <span>{formatDate(belt.process.calendaringDate)}</span>
                               </>
                             )}
                             <span className="text-muted-foreground">Consumed:</span>
@@ -298,12 +297,13 @@ export default function BeltDetailsDialog({ open, onOpenChange, belt }: BeltDeta
                                 <span>{formatDate(batch.skimCompoundProducedOn)}</span>
                               </>
                             )}
-                            {batch.date && (
+                            {belt.process?.calendaringDate && (
                               <>
                                 <span className="text-muted-foreground">Consumed On:</span>
-                                <span>{formatDate(batch.date)}</span>
+                                <span>{formatDate(belt.process.calendaringDate)}</span>
                               </>
                             )}
+
                             <span className="text-muted-foreground">Consumed:</span>
                             <span>{roundToNearest5(Number(batch.consumedKg)).toFixed(2)} kg</span>
                           </div>

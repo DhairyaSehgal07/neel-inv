@@ -4,6 +4,7 @@ import { useCompoundBatchesQuery } from '@/services/api/queries/compounds/client
 import { DataTable } from '../ui/data-table';
 import { columns } from './columns';
 import { Skeleton } from '@/components/ui/skeleton';
+import { CompoundBatchesPDFReportButton } from './CompoundBatchesPDFReport';
 
 export default function CompoundBatchesList() {
   const { data, isLoading, error } = useCompoundBatchesQuery();
@@ -32,8 +33,9 @@ export default function CompoundBatchesList() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between">
+      <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Compound Batches</h2>
+        <CompoundBatchesPDFReportButton batches={data || []} />
       </div>
 
       <DataTable

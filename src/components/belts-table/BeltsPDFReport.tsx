@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { Document, Page, Text, View, StyleSheet, pdf } from '@react-pdf/renderer';
 import { Button } from '@/components/ui/button';
 import { BeltDoc } from '@/model/Belt';
-import { Eye, X, Download } from 'lucide-react';
+import { Eye, X, Download, FileDown } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 
 
@@ -144,13 +151,61 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
     }
   };
 
-  const handleDownload = () => {
+  const handleDownloadPDF = () => {
     if (pdfUrl) {
       const fileName = `Belts_Report_${new Date().toISOString().split('T')[0]}.pdf`;
       const link = document.createElement('a');
       link.href = pdfUrl;
       link.download = fileName;
       link.click();
+    }
+  };
+
+  const handleDownloadXLSX = () => {
+    try {
+      // Prepare data for Excel
+      const excelData = belts.map((belt, index) => ({
+        'S.No.': index + 1,
+        'Belt No.': belt.beltNumber,
+        'Width (mm)': belt.beltWidthMm || '',
+        'Belt Rating': belt.rating || '',
+        'Fabric Type': belt.fabric?.type || 'N/A',
+        'Top Cover (mm)': belt.topCoverMm || '',
+        'Bottom Cover (mm)': belt.bottomCoverMm || '',
+        'Cover Grade': belt.coverGrade || '',
+        'Edge': belt.edge || '',
+        'Length (m)': belt.beltLengthM || '',
+        'Status': belt.status || '',
+      }));
+
+      // Create workbook and worksheet
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(excelData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 8 },  // S.No.
+        { wch: 12 }, // Belt No.
+        { wch: 12 }, // Width
+        { wch: 12 }, // Belt Rating
+        { wch: 12 }, // Fabric Type
+        { wch: 12 }, // Top
+        { wch: 15 }, // Bottom
+        { wch: 12 }, // Cover Grade
+        { wch: 10 }, // Edge
+        { wch: 12 }, // Length
+        { wch: 12 }, // Status
+      ];
+      ws['!cols'] = colWidths;
+
+      // Add worksheet to workbook
+      XLSX.utils.book_append_sheet(wb, ws, 'Belts Report');
+
+      // Generate Excel file
+      const fileName = `Belts_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Error generating XLSX:', error);
     }
   };
 
@@ -176,10 +231,24 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-lg font-semibold">Belts Report Preview</h2>
               <div className="flex gap-2">
-                <Button onClick={handleDownload} size="sm">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm">
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleDownloadPDF}>
+                      <Download className="mr-2 h-4 w-4" />
+                      Download as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleDownloadXLSX}>
+                      <FileDown className="mr-2 h-4 w-4" />
+                      Download as XLSX
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button onClick={handleClose} size="sm" variant="ghost">
                   <X className="h-4 w-4" />
                 </Button>
