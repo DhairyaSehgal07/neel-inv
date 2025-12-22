@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.17](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.16...v0.1.17) (2025-12-22)
+
+
+### Features
+
+* add analytics page and PDF report functionality for belts ([cf0cb8f](https://github.com/DhairyaSehgal07/neel-inv/commit/cf0cb8fe2b0fabcdff7824e642ebf61a3f704e7f))
+* add auto and manual belt creation with enhanced belt management features ([b9a48c0](https://github.com/DhairyaSehgal07/neel-inv/commit/b9a48c077076d4ac97db3f86cb0eba9da9672985))
+* add compound batches report with PDF and XLSX export ([19619f7](https://github.com/DhairyaSehgal07/neel-inv/commit/19619f727834045c5f60d602363e9129b4dddf0a))
+* remove admin-only fields from belt details and add Operator user seeding ([62f4f00](https://github.com/DhairyaSehgal07/neel-inv/commit/62f4f007226a5a5ed739ead29dd53552ae75bb26))
+
 ### [0.1.16](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.15...v0.1.16) (2025-12-13)
 
 
