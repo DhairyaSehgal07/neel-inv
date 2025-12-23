@@ -54,7 +54,7 @@ export function isDuplicateKeyErrorForField(err: unknown, field: string): boolea
 }
 
 /**
- * Get random batch count between 80 and 90
+ * Get random batch count between 110 and 120
  */
 export function getRandomBatchCount(): number {
   return random_value_100_110();

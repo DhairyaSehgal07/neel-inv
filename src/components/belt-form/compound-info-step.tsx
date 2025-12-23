@@ -77,7 +77,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
     return {
       topCoverMm: parseFloat(String(topCover)),
       bottomCoverMm: parseFloat(String(bottomCover)),
-      coverSG: 1.5,
+      coverSG: 1.25,
       beltWidthM: parseFloat(String(beltWidth)) / 1000,
       beltLengthM: parseFloat(String(beltLength)),
     };
@@ -90,7 +90,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
       fabricStrength,
       numberOfPlies: parseNumberOfPliesFromRating(rating),
       skimThicknessMmPerPly: skim_thickness_from_strength(fabricStrength),
-      skimSG: 1.5,
+      skimSG: 1.25,
       beltWidthM: parseFloat(String(beltWidth)) / 1000,
       beltLengthM: parseFloat(String(beltLength)),
     };
@@ -105,7 +105,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
       const bottomCoverMm = parseFloat(String(bottomCover));
 
       // Get cover compound specific gravity
-      const coverSG = 1.5;
+      const coverSG = 1.25;
 
       // Calculate cover weight
       const coverWeight = cover_weight_kg(
@@ -132,7 +132,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
       const skimThicknessMmPerPly = skim_thickness_from_strength(fabricStrength);
 
       // Get skim compound specific gravity
-      const skimSG = 1.5;
+      const skimSG = 1.25;
 
       // Calculate skim weight
       const skimWeight = skim_weight_kg(
@@ -194,7 +194,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
               <FormControl>
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
-              {isAdmin && (<FormDescription>Calculated: thickness_mm × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
+              {isAdmin && (<FormDescription>Calculated: thickness_mm × SG × 1.03 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
               {isAdmin && coverCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">
@@ -239,7 +239,7 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
               <FormControl>
                 <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
               </FormControl>
-              {isAdmin && (<FormDescription>Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.06 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
+              {isAdmin && (<FormDescription>Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.03 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
               {isAdmin && skimCalculationValues && (
                 <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
                   <div className="font-medium text-xs text-muted-foreground mb-2">

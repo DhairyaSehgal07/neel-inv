@@ -96,7 +96,7 @@ export function fabric_consumed(beltLength: number | undefined, number_of_plies:
  * cover_weight_kg =
  * thickness_mm
  * * specific_gravity
- * * 1.06
+ * * 1.03
  * * 1.02
  * * belt_width_m
  * * belt_length_m
@@ -115,8 +115,8 @@ export function cover_weight_kg(
   const width = beltWidthM || 0;
   const length = beltLengthM || 0;
   const thickness = top + bottom;
-  // formula: thickness_mm * SG * 1.06 * 1.02 * belt_width_m * belt_length_m
-  return thickness * specificGravity * 1.06 * 1.02 * width * length;
+  // formula: thickness_mm * SG * 1.03 * 1.02 * belt_width_m * belt_length_m
+  return thickness * specificGravity * 1.03 * 1.02 * width * length;
 }
 
 /**
@@ -125,7 +125,7 @@ export function cover_weight_kg(
  * skim_weight_kg =
  * thickness_mm
  * * specific_gravity
- * * 1.06
+ * * 1.03
  * * 1.02
  * * belt_width_m
  * * belt_length_m
@@ -142,8 +142,8 @@ export function skim_weight_kg(
   const width = beltWidthM || 0;
   const length = beltLengthM || 0;
   const thickness = skimThicknessMmPerPly * number_of_plies;
-  // formula: thickness_mm * SG * 1.06 * 1.02 * belt_width_m * belt_length_m
-  return thickness * specificGravity * 1.06 * 1.02 * width * length;
+  // formula: thickness_mm * SG * 1.03 * 1.02 * belt_width_m * belt_length_m
+  return thickness * specificGravity * 1.03 * 1.02 * width * length;
 }
 
 /**
@@ -169,10 +169,10 @@ export function skim_batches(skimWeightKg: number, compound?: CompoundKey) {
 
 /**
  * Random range requirement
- * random_value = random_integer(100, 110)
+ * random_value = random_integer(110, 120)
  */
 export function random_value_100_110() {
-  return Math.floor(Math.random() * (110 - 100 + 1)) + 100;
+  return Math.floor(Math.random() * (120 - 110 + 1)) + 110;
 }
 
 
@@ -254,7 +254,7 @@ export function randomBetween(min: number, max: number): number {
 /**
  * Convert a Date to YYYY-MM-DD format using local timezone (not UTC)
  */
-function toISODateOnly(d: Date) {
+export function toISODateOnly(d: Date) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
@@ -265,7 +265,7 @@ function toISODateOnly(d: Date) {
  * Parse a date string (YYYY-MM-DD) as a local date (not UTC)
  * This prevents timezone shifts when parsing date-only strings
  */
-function parseLocalDate(dateStr: string): Date {
+export function parseLocalDate(dateStr: string): Date {
   const [year, month, day] = dateStr.split('-').map(Number);
   // Create date in local timezone (month is 0-indexed in Date constructor)
   return new Date(year, month - 1, day);
@@ -358,15 +358,15 @@ export function process_dates_from_dispatch(dispatchDateIso?: string): ProcessDa
       : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring'); // 1 day before
   console.log('[Date Calculation] Step 7: Calendaring Date =', toISODateOnly(calendaring));
 
-  // 8. Cover Compound: Calendaring − 7 to Calendaring − 10 days (random in range)
-  const coverCompoundOffset = randomBetween(7, 10);
+  // 8. Cover Compound: Calendaring − 3 to Calendaring − 30 days (random in range)
+  const coverCompoundOffset = randomBetween(3, 30);
   console.log('[Date Calculation] Step 8: Cover Compound - Random offset selected:', coverCompoundOffset, 'working days');
   const coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
   console.log('[Date Calculation] Step 8: Cover Compound Date =', toISODateOnly(coverCompound));
 
-  // 9. Skim Compound: Calendaring − 7 to Calendaring − 10 days (random in range)
+  // 9. Skim Compound: Calendaring − 3 to Calendaring − 30 days (random in range)
   // Must be on a different date than cover compound
-  const skimCompoundOffset = randomBetween(7, 10);
+  const skimCompoundOffset = randomBetween(3, 30);
   console.log('[Date Calculation] Step 9: Skim Compound - Initial random offset selected:', skimCompoundOffset, 'working days');
   let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
 
@@ -636,9 +636,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -659,9 +659,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -682,9 +682,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -705,9 +705,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -728,9 +728,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -751,9 +751,9 @@ export function process_dates_from_any_date(
       calendaring = calendaringOffset === 0
         ? new Date(greenBelt)
         : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -776,9 +776,9 @@ export function process_dates_from_any_date(
       const pdiOffset = randomBetween(4, 5);
       dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
       packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       coverCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -788,7 +788,7 @@ export function process_dates_from_any_date(
 
     case 'coverCompoundProducedOn': {
       coverCompound = baseDate;
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       calendaring = datePlusDaysSkippingHolidaysAndSundays(coverCompound, coverCompoundOffset, 'Calendaring');
       const greenBeltOffset = randomBetween(0, 1);
       greenBelt = greenBeltOffset === 0
@@ -801,7 +801,7 @@ export function process_dates_from_any_date(
       const pdiOffset = randomBetween(4, 5);
       dispatch = datePlusDaysSkippingHolidaysAndSundays(pdi, pdiOffset, 'Dispatch');
       packaging = dateMinusDaysSkippingHolidaysAndSundays(dispatch, 1, 'Packaging');
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -813,7 +813,7 @@ export function process_dates_from_any_date(
       skimCompound = baseDate;
       // For skim compound, we need to ensure it's different from cover compound
       // Calculate cover compound first, then adjust if needed
-      let coverCompoundOffset = randomBetween(7, 10);
+      let coverCompoundOffset = randomBetween(3, 30);
       calendaring = datePlusDaysSkippingHolidaysAndSundays(skimCompound, coverCompoundOffset, 'Calendaring');
       // Recalculate cover compound from calendaring
       coverCompoundOffset = randomBetween(7, 10);
@@ -822,7 +822,7 @@ export function process_dates_from_any_date(
       if (toISODateOnly(skimCompound) === toISODateOnly(coverCompound)) {
         coverCompound = dateMinusDaysSkippingHolidaysAndSundays(skimCompound, 1, 'Cover Compound (adjusted)');
         // Recalculate calendaring from adjusted cover compound
-        coverCompoundOffset = randomBetween(7, 10);
+        coverCompoundOffset = randomBetween(3, 30);
         calendaring = datePlusDaysSkippingHolidaysAndSundays(coverCompound, coverCompoundOffset, 'Calendaring');
       }
       const greenBeltOffset = randomBetween(0, 1);
@@ -947,10 +947,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -982,10 +982,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1012,10 +1012,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1039,10 +1039,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1064,10 +1064,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1087,10 +1087,10 @@ export function process_dates_backward_only(
           : dateMinusDaysSkippingHolidaysAndSundays(greenBelt, 1, 'Calendaring')
       );
       const calendaring = parseLocalDate(result.calendaring_date);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1103,10 +1103,10 @@ export function process_dates_backward_only(
       // Calculate dates backward from calendaring
       const calendaring = baseDate;
       result.calendaring_date = toISODateOnly(calendaring);
-      const coverCompoundOffset = randomBetween(7, 10);
+      const coverCompoundOffset = randomBetween(3, 30);
       result.cover_compound_date = toISODateOnly(dateMinusDaysSkippingHolidaysAndSundays(calendaring, coverCompoundOffset, 'Cover Compound'));
       const coverCompound = parseLocalDate(result.cover_compound_date);
-      const skimCompoundOffset = randomBetween(7, 10);
+      const skimCompoundOffset = randomBetween(3, 30);
       let skimCompound = dateMinusDaysSkippingHolidaysAndSundays(calendaring, skimCompoundOffset, 'Skim Compound');
       if (toISODateOnly(skimCompound) === result.cover_compound_date) {
         skimCompound = dateMinusDaysSkippingHolidaysAndSundays(coverCompound, 1, 'Skim Compound (adjusted)');
@@ -1252,15 +1252,15 @@ export function validateDateRelationships(dates: {
     }
   }
 
-  // Validate Compound dates: cover and skim must be 7-10 working days before calendaring
+  // Validate Compound dates: cover and skim must be 3-30 working days before calendaring
   if (coverCompound && calendaring) {
     if (isWeekendOrHoliday(coverCompound)) {
       errors.coverCompoundProducedOn = 'Cover compound date must be a working day';
     } else {
       const days = countWorkingDays(coverCompound, calendaring);
-      if (days < 7 || days > 10) {
+      if (days < 3 || days > 30) {
         errors.coverCompoundProducedOn =
-          'Cover compound must be 7-10 working days before calendaring';
+          'Cover compound must be 3-30 working days before calendaring';
       }
     }
   }
@@ -1269,10 +1269,10 @@ export function validateDateRelationships(dates: {
     if (isWeekendOrHoliday(skimCompound)) {
       errors.skimCompoundProducedOn = 'Skim compound date must be a working day';
     } else {
-      // Skim should be 7-10 working days before calendaring
+      // Skim should be 3-30 working days before calendaring
       const days = countWorkingDays(skimCompound, calendaring);
-      if (days < 7 || days > 10) {
-        errors.skimCompoundProducedOn = 'Skim compound must be 7-10 working days before calendaring';
+      if (days < 3 || days > 30) {
+        errors.skimCompoundProducedOn = 'Skim compound must be 3-30 working days before calendaring';
       }
     }
   }
