@@ -90,8 +90,18 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess }: ReviewAndSubmit
       },
       onError: (error) => {
         console.error('Error creating belt:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Failed to create belt';
-        toast.error(errorMessage);
+        let errorMessage = 'Failed to create belt';
+
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        }
+
+        // Show error toast with detailed message
+        toast.error(errorMessage, {
+          duration: 5000,
+        });
       },
     });
   };
