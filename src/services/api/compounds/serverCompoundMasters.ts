@@ -16,6 +16,7 @@ export async function createCompoundMaster(payload: {
   compoundName: string;
   category: 'skim' | 'cover';
   defaultWeightPerBatch: number;
+  rawMaterials?: string[];
 }) {
   try {
     const response = await api.post('/compound-masters', payload);
@@ -33,6 +34,7 @@ export async function updateCompoundMaster(
     compoundName?: string;
     category?: 'skim' | 'cover';
     defaultWeightPerBatch?: number;
+    rawMaterials?: string[];
   }
 ) {
   try {

@@ -98,6 +98,24 @@ async function updateCompoundMaster(
       }
     }
 
+    // Validate rawMaterials if provided
+    if (body.rawMaterials !== undefined) {
+      if (!Array.isArray(body.rawMaterials)) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'rawMaterials must be an array',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+      if (!body.rawMaterials.every((item: unknown) => typeof item === 'string')) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'rawMaterials must be an array of strings',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+    }
+
     // Check if compound master exists
     const existingCompound = await CompoundMaster.findById(id);
     if (!existingCompound) {

@@ -20,6 +20,7 @@ import {
   SelectContent,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { X, Plus } from 'lucide-react';
 
 export default function EditCompoundDialog({
   open,
@@ -44,6 +45,10 @@ export default function EditCompoundDialog({
   const [defaultWeightPerBatch, setDefaultWeightPerBatch] = useState(
     () => compound?.defaultWeightPerBatch?.toString() ?? '90'
   );
+  const [rawMaterials, setRawMaterials] = useState<string[]>(
+    () => compound?.rawMaterials || []
+  );
+  const [newMaterial, setNewMaterial] = useState('');
 
   const isEdit = Boolean(compound);
 
@@ -54,6 +59,35 @@ export default function EditCompoundDialog({
     if (value === 'skim' || value === 'cover') {
       setCategory(value);
     }
+  };
+
+  const handleAddMaterial = () => {
+    const trimmed = newMaterial.trim();
+    if (!trimmed) {
+      toast.error('Please enter a raw material name');
+      return;
+    }
+    if (rawMaterials.includes(trimmed)) {
+      toast.error('This raw material already exists');
+      return;
+    }
+    setRawMaterials([...rawMaterials, trimmed]);
+    setNewMaterial('');
+  };
+
+  const handleRemoveMaterial = (index: number) => {
+    setRawMaterials(rawMaterials.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateMaterial = (index: number, newValue: string) => {
+    const trimmed = newValue.trim();
+    if (!trimmed) {
+      handleRemoveMaterial(index);
+      return;
+    }
+    const updated = [...rawMaterials];
+    updated[index] = trimmed;
+    setRawMaterials(updated);
   };
 
   async function handleSubmit() {
@@ -82,6 +116,7 @@ export default function EditCompoundDialog({
             compoundName,
             category,
             defaultWeightPerBatch: weight,
+            rawMaterials,
           },
         });
         toast.success('Compound master updated successfully');
@@ -91,6 +126,7 @@ export default function EditCompoundDialog({
           compoundName,
           category,
           defaultWeightPerBatch: weight,
+          rawMaterials,
         });
         toast.success('Compound master created successfully');
       }
@@ -158,6 +194,59 @@ export default function EditCompoundDialog({
             <p className="text-xs text-muted-foreground mt-1">
               Typically 90 kg for most compounds, 120 kg for Nk-8, Nk-9, Nk-10
             </p>
+          </div>
+
+          <div>
+            <Label>Raw Materials</Label>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <Input
+                  value={newMaterial}
+                  onChange={(e) => setNewMaterial(e.target.value)}
+                  placeholder="Enter raw material name"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddMaterial();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleAddMaterial}
+                  disabled={!newMaterial.trim()}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+              {rawMaterials.length > 0 && (
+                <div className="space-y-2 border rounded-md p-3">
+                  {rawMaterials.map((material, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        value={material}
+                        onChange={(e) => handleUpdateMaterial(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveMaterial(index)}
+                        className="h-8 w-8"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {rawMaterials.length === 0 && (
+                <p className="text-xs text-muted-foreground">No raw materials added yet</p>
+              )}
+            </div>
           </div>
 
           <Button disabled={isLoading} onClick={handleSubmit}>

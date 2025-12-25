@@ -36,7 +36,7 @@ async function createCompoundMaster(request: NextRequest) {
     await dbConnect();
     const body = await request.json();
 
-    const { compoundCode, compoundName, category, defaultWeightPerBatch } = body;
+    const { compoundCode, compoundName, category, defaultWeightPerBatch, rawMaterials } = body;
 
     if (!compoundCode || !compoundName || !category || !defaultWeightPerBatch) {
       const response: ApiResponse = {
@@ -44,6 +44,24 @@ async function createCompoundMaster(request: NextRequest) {
         message: 'compoundCode, compoundName, category, and defaultWeightPerBatch are required',
       };
       return NextResponse.json(response, { status: 400 });
+    }
+
+    // Validate rawMaterials if provided
+    if (rawMaterials !== undefined) {
+      if (!Array.isArray(rawMaterials)) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'rawMaterials must be an array',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+      if (!rawMaterials.every((item) => typeof item === 'string')) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'rawMaterials must be an array of strings',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
     }
 
     // Validate category enum
@@ -79,6 +97,7 @@ async function createCompoundMaster(request: NextRequest) {
       compoundName,
       category,
       defaultWeightPerBatch,
+      rawMaterials: rawMaterials || [],
     });
 
     const response: ApiResponse = {

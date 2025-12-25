@@ -37,6 +37,25 @@ export const columns: ColumnDef<CompoundMaster>[] = [
     },
   },
   {
+    accessorKey: 'rawMaterials',
+    header: 'Raw Materials',
+    cell: ({ row }) => {
+      const materials = row.original.rawMaterials || [];
+      if (materials.length === 0) {
+        return <span className="text-muted-foreground text-sm">No materials</span>;
+      }
+      return (
+        <div className="flex flex-wrap gap-1 max-w-[300px]">
+          {materials.map((material, index) => (
+            <Badge key={index} variant="outline" className="text-xs">
+              {material}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: 'createdAt',
     header: 'Created At',
     cell: ({ row }) => {

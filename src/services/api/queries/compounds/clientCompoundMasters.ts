@@ -27,6 +27,7 @@ async function createCompoundMasterClient(payload: {
   compoundName: string;
   category: 'skim' | 'cover';
   defaultWeightPerBatch: number;
+  rawMaterials?: string[];
 }): Promise<CompoundMaster> {
   const response = await api.post<ApiResponse<CompoundMaster>>('/api/compounds/master', payload);
   if (!response.data.success) {
@@ -55,6 +56,7 @@ async function updateCompoundMasterClient({
     compoundName?: string;
     category?: 'skim' | 'cover';
     defaultWeightPerBatch?: number;
+    rawMaterials?: string[];
   };
 }): Promise<CompoundMaster> {
   const response = await api.put<ApiResponse<CompoundMaster>>(`/api/compounds/master/${id}`, payload);

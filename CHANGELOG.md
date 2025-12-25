@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.18](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.17...v0.1.18) (2025-12-25)
+
+
+### Features
+
+* add compound master report with individual batch documents ([00331bf](https://github.com/DhairyaSehgal07/neel-inv/commit/00331bf771383d04cab1d7c1732b49d4ae6abe81))
+
 ### [0.1.17](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.16...v0.1.17) (2025-12-22)
 
 
