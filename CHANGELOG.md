@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file. See [standa
 
 ### Features
 
-* add compound master report with individual batch documents ([00331bf](https://github.com/DhairyaSehgal07/neel-inv/commit/00331bf771383d04cab1d7c1732b49d4ae6abe81))
+* add raw materials CRUD to compound master ([eeb6d2c](https://github.com/DhairyaSehgal07/neel-inv/commit/eeb6d2c))
 
 ### [0.1.17](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.16...v0.1.17) (2025-12-22)
 
