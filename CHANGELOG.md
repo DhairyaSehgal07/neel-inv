@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.19](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.18...v0.1.19) (2025-12-29)
+
+
+### Features
+
+* add raw materials display to compound master report ([7a17f28](https://github.com/DhairyaSehgal07/neel-inv/commit/7a17f28f0d99c6a0e851e0a43657fd9d8e8c02a4))
+
+
+### Miscellaneous Chores
+
+* update CHANGELOG with correct commit hash ([694fc24](https://github.com/DhairyaSehgal07/neel-inv/commit/694fc24f9cd84186c7a4092a0688e9cc645abf01))
+
 ### [0.1.18](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.17...v0.1.18) (2025-12-25)
 
 
