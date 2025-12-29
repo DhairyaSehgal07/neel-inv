@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import CompoundBatch from '@/model/CompoundBatch';
+import CompoundMaster from '@/model/CompoundMaster';
 import Belt from '@/model/Belt';
 import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
@@ -16,6 +17,7 @@ interface CompoundMasterReportData {
   totalInventory: number;
   remaining: number;
   beltNumbers: string[];
+  rawMaterials: string[];
 }
 
 async function getCompoundMasterReport() {
@@ -26,6 +28,14 @@ async function getCompoundMasterReport() {
     const compoundBatches = await CompoundBatch.find()
       .sort({ coverCompoundProducedOn: 1, skimCompoundProducedOn: 1, date: 1 })
       .lean();
+
+    // Get all compound masters to map rawMaterials
+    const compoundMasters = await CompoundMaster.find({}).lean();
+    const masterIdToRawMaterials = new Map<string, string[]>();
+    compoundMasters.forEach((master) => {
+      const masterIdStr = master._id?.toString() || '';
+      masterIdToRawMaterials.set(masterIdStr, master.rawMaterials || []);
+    });
 
     // Get all belts to find which ones used which batches
     const belts = await Belt.find({}).lean();
@@ -67,6 +77,10 @@ async function getCompoundMasterReport() {
       const batchIdStr = batch._id?.toString() || '';
       const beltNumbersForBatch = batchIdToBelts.get(batchIdStr) || new Set<string>();
 
+      // Extract rawMaterials from compoundMasterId using the map
+      const compoundMasterIdStr = batch.compoundMasterId?.toString() || '';
+      const rawMaterials = masterIdToRawMaterials.get(compoundMasterIdStr) || [];
+
       return {
         compoundCode: batch.compoundCode,
         compoundName: batch.compoundName || '',
@@ -77,6 +91,7 @@ async function getCompoundMasterReport() {
         totalInventory: batch.totalInventory || 0,
         remaining: batch.inventoryRemaining || 0,
         beltNumbers: Array.from(beltNumbersForBatch).sort(),
+        rawMaterials,
       };
     });
 

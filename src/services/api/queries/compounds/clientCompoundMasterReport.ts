@@ -14,6 +14,7 @@ export interface CompoundMasterReportData {
   totalInventory: number;
   remaining: number;
   beltNumbers: string[];
+  rawMaterials: string[];
 }
 
 async function getCompoundMasterReportClient(): Promise<CompoundMasterReportData[]> {

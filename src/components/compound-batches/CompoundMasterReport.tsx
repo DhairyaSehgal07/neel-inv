@@ -55,16 +55,17 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
-  col1: { width: '5%', fontSize: 7 }, // S.No.
-  col2: { width: '12%', fontSize: 7 }, // Compound Code
-  col3: { width: '15%', fontSize: 7 }, // Compound Name
-  col4: { width: '10%', fontSize: 7 }, // Produced On
-  col5: { width: '10%', fontSize: 7 }, // Consumed On
-  col6: { width: '8%', fontSize: 7 }, // Number of Batches
-  col7: { width: '10%', fontSize: 7 }, // Weight per Batch
-  col8: { width: '10%', fontSize: 7 }, // Total Inventory
-  col9: { width: '10%', fontSize: 7 }, // Remaining
+  col1: { width: '4%', fontSize: 7 }, // S.No.
+  col2: { width: '10%', fontSize: 7 }, // Compound Code
+  col3: { width: '12%', fontSize: 7 }, // Compound Name
+  col4: { width: '8%', fontSize: 7 }, // Produced On
+  col5: { width: '8%', fontSize: 7 }, // Consumed On
+  col6: { width: '6%', fontSize: 7 }, // Number of Batches
+  col7: { width: '8%', fontSize: 7 }, // Weight per Batch
+  col8: { width: '8%', fontSize: 7 }, // Total Inventory
+  col9: { width: '8%', fontSize: 7 }, // Remaining
   col10: { width: '10%', fontSize: 7 }, // Belt Numbers
+  col11: { width: '18%', fontSize: 7 }, // Raw Materials
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -128,6 +129,7 @@ const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> 
             <Text style={styles.col8}>Total Inventory (kg)</Text>
             <Text style={styles.col9}>Remaining (kg)</Text>
             <Text style={styles.col10}>Belt Numbers</Text>
+            <Text style={styles.col11}>Raw Materials</Text>
           </View>
 
           {data.map((row, index) => {
@@ -146,6 +148,9 @@ const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> 
                 <Text style={styles.col9}>{roundToNearest5(row.remaining).toFixed(2)}</Text>
                 <Text style={styles.col10}>
                   {row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A'}
+                </Text>
+                <Text style={styles.col11}>
+                  {row.rawMaterials && row.rawMaterials.length > 0 ? row.rawMaterials.join(', ') : 'N/A'}
                 </Text>
               </View>
             );
@@ -213,6 +218,7 @@ export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = (
         'Total Inventory (kg)': roundToNearest5(row.totalInventory).toFixed(2),
         'Remaining (kg)': roundToNearest5(row.remaining).toFixed(2),
         'Belt Numbers': row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A',
+        'Raw Materials': row.rawMaterials && row.rawMaterials.length > 0 ? row.rawMaterials.join(', ') : 'N/A',
       }));
 
       // Create workbook and worksheet
@@ -222,15 +228,16 @@ export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = (
       // Set column widths
       const colWidths = [
         { wch: 8 },  // S.No.
-        { wch: 20 }, // Compound Code
-        { wch: 25 }, // Compound Name
-        { wch: 15 }, // Produced On
-        { wch: 15 }, // Consumed On
-        { wch: 15 }, // Number of Batches
-        { wch: 18 }, // Weight per Batch
-        { wch: 20 }, // Total Inventory
-        { wch: 15 }, // Remaining
-        { wch: 30 }, // Belt Numbers
+        { wch: 18 }, // Compound Code
+        { wch: 22 }, // Compound Name
+        { wch: 13 }, // Produced On
+        { wch: 13 }, // Consumed On
+        { wch: 12 }, // Number of Batches
+        { wch: 16 }, // Weight per Batch
+        { wch: 18 }, // Total Inventory
+        { wch: 13 }, // Remaining
+        { wch: 25 }, // Belt Numbers
+        { wch: 35 }, // Raw Materials
       ];
       ws['!cols'] = colWidths;
 

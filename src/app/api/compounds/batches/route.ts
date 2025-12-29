@@ -22,7 +22,10 @@ async function getCompoundBatches(request: NextRequest) {
     if (date) query.date = date;
 
     // Default sorting: newest first
-    const batches = await CompoundBatch.find(query).sort({ date: -1 });
+    // Populate compoundMasterId with rawMaterials from CompoundMaster
+    const batches = await CompoundBatch.find(query)
+      .populate('compoundMasterId', 'rawMaterials')
+      .sort({ date: -1 });
 
     const response: ApiResponse = {
       success: true,
