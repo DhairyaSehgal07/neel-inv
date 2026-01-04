@@ -5,6 +5,7 @@ import { Permission } from '@/lib/rbac/permissions';
 import { ApiResponse } from '@/types/apiResponse';
 import dbConnect from '@/lib/dbConnect';
 import CompoundBatch from '@/model/CompoundBatch';
+import CompoundMaster from '@/model/CompoundMaster';
 
 /**
  * Update compound batch handler
@@ -46,6 +47,22 @@ async function updateCompoundBatchHandler(
 
     if (body.compoundCode !== undefined) {
       updateData.compoundCode = body.compoundCode;
+
+      // Look up CompoundMaster by compoundCode and update compoundMasterId
+      const master = await CompoundMaster.findOne({ compoundCode: body.compoundCode });
+      if (!master) {
+        const response: ApiResponse = {
+          success: false,
+          message: `CompoundMaster not found for code: ${body.compoundCode}`,
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+      updateData.compoundMasterId = master._id;
+
+      // Also update compoundName if not explicitly provided
+      if (body.compoundName === undefined) {
+        updateData.compoundName = master.compoundName;
+      }
     }
 
     if (body.compoundName !== undefined) {
@@ -95,26 +112,108 @@ async function updateCompoundBatchHandler(
       updateData.weightPerBatch = weightPerBatch;
     }
 
-    // Recalculate totalInventory if batches or weightPerBatch changed
-    if (body.batches !== undefined || body.weightPerBatch !== undefined) {
-      const batches = body.batches !== undefined
-        ? (typeof body.batches === 'number' ? body.batches : parseFloat(body.batches))
-        : existingBatch.batches;
+    // Handle inventory reduction if reducedQty is provided
+    if (body.reducedQty !== undefined && body.reducedQty !== null && body.reducedQty !== '') {
+      const reducedQty = typeof body.reducedQty === 'number' ? body.reducedQty : parseFloat(body.reducedQty);
+
+      if (isNaN(reducedQty) || reducedQty < 0) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Reduced quantity must be a non-negative number',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      if (reducedQty > existingBatch.inventoryRemaining) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Reduced quantity cannot exceed remaining inventory',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      // Calculate new inventory remaining based on formula:
+      // actual qty produced - (reduced qty/batch weight) = desired qty level
       const weightPerBatch = body.weightPerBatch !== undefined
         ? (typeof body.weightPerBatch === 'number' ? body.weightPerBatch : parseFloat(body.weightPerBatch))
         : existingBatch.weightPerBatch;
 
-      const newTotalInventory = batches * weightPerBatch;
-      updateData.totalInventory = newTotalInventory;
+      if (weightPerBatch <= 0) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Weight per batch must be a positive number',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
 
-      // Adjust inventoryRemaining proportionally if totalInventory changed
-      if (existingBatch.totalInventory > 0) {
-        const ratio = newTotalInventory / existingBatch.totalInventory;
-        updateData.inventoryRemaining = Math.max(0, Math.round(existingBatch.inventoryRemaining * ratio));
-        updateData.consumed = newTotalInventory - updateData.inventoryRemaining;
-      } else {
-        updateData.inventoryRemaining = newTotalInventory;
-        updateData.consumed = 0;
+      // Calculate batches to reduce: reducedQty / weightPerBatch
+      const batchesToReduce = reducedQty / weightPerBatch;
+
+      // Calculate new desired quantity level based on formula:
+      // actual qty produced - (reduced qty/batch weight) = desired qty level
+      // Where: actual qty produced = totalInventory
+      //        reduced qty/batch weight = reducedQty / weightPerBatch (this gives batches to reduce)
+      //        desired qty level = new inventoryRemaining
+      // So: totalInventory - (reducedQty / weightPerBatch) = new inventoryRemaining
+      // But since (reducedQty / weightPerBatch) is in batches, we need to convert to kg:
+      // totalInventory - reducedQty = new inventoryRemaining
+      // And auto reduce batches: batches - (reducedQty / weightPerBatch) = new batches
+
+      // Calculate new inventory remaining: reduce from current remaining
+      const newInventoryRemaining = existingBatch.inventoryRemaining - reducedQty;
+
+      // Ensure new inventory remaining is not negative
+      if (newInventoryRemaining < 0) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Reduced quantity cannot exceed remaining inventory',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      // Auto reduce number of batches
+      const newBatches = existingBatch.batches - batchesToReduce;
+
+      if (newBatches < 0) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Reduced quantity would result in negative number of batches',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      // Update batches and recalculate totalInventory
+      updateData.batches = Math.max(0, Math.round(newBatches * 100) / 100); // Round to 2 decimal places
+      const newTotalInventory = updateData.batches * weightPerBatch;
+      updateData.totalInventory = Math.round(newTotalInventory * 100) / 100;
+
+      // Set new inventory remaining and consumed
+      // The desired qty level from formula: totalInventory - (reducedQty / weightPerBatch)
+      // But we're reducing from remaining, so use the calculated newInventoryRemaining
+      updateData.inventoryRemaining = Math.max(0, Math.round(newInventoryRemaining * 100) / 100);
+      updateData.consumed = Math.max(0, Math.round((updateData.totalInventory - updateData.inventoryRemaining) * 100) / 100);
+    } else {
+      // Recalculate totalInventory if batches or weightPerBatch changed (but no reduction)
+      if (body.batches !== undefined || body.weightPerBatch !== undefined) {
+        const batches = body.batches !== undefined
+          ? (typeof body.batches === 'number' ? body.batches : parseFloat(body.batches))
+          : existingBatch.batches;
+        const weightPerBatch = body.weightPerBatch !== undefined
+          ? (typeof body.weightPerBatch === 'number' ? body.weightPerBatch : parseFloat(body.weightPerBatch))
+          : existingBatch.weightPerBatch;
+
+        const newTotalInventory = batches * weightPerBatch;
+        updateData.totalInventory = newTotalInventory;
+
+        // Adjust inventoryRemaining proportionally if totalInventory changed
+        if (existingBatch.totalInventory > 0) {
+          const ratio = newTotalInventory / existingBatch.totalInventory;
+          updateData.inventoryRemaining = Math.max(0, Math.round(existingBatch.inventoryRemaining * ratio));
+          updateData.consumed = newTotalInventory - updateData.inventoryRemaining;
+        } else {
+          updateData.inventoryRemaining = newTotalInventory;
+          updateData.consumed = 0;
+        }
       }
     }
 

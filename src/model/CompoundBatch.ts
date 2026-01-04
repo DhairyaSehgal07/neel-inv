@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 
 export interface CompoundBatchDoc extends Document {
   compoundCode: string;
@@ -9,6 +9,8 @@ export interface CompoundBatchDoc extends Document {
   totalInventory: number;
   inventoryRemaining: number;
   consumed: number;
+
+  compoundMasterId: Types.ObjectId; // ✅ FIXED
   coverCompoundProducedOn?: string; // unique globally
   skimCompoundProducedOn?: string; // unique globally
   createdAt: Date;
@@ -25,6 +27,12 @@ const CompoundBatchSchema = new Schema<CompoundBatchDoc>(
     totalInventory: { type: Number, required: true },
     inventoryRemaining: { type: Number, required: true, default: 0 },
     consumed: { type: Number, required: true, default: 0 },
+    compoundMasterId: {
+      type: Schema.Types.ObjectId,
+      ref: 'CompoundMaster',
+      required: true,
+      index: true,
+    },
     coverCompoundProducedOn: { type: String },
     skimCompoundProducedOn: { type: String },
   },
@@ -52,6 +60,17 @@ CompoundBatchSchema.index({
 /* ---------- GLOBAL VALIDATION (MOST IMPORTANT) ------------ */
 CompoundBatchSchema.pre('save', async function () {
   const doc = this as CompoundBatchDoc;
+
+  // Auto-populate compoundMasterId if missing (lookup by compoundCode)
+  if (!doc.compoundMasterId && doc.compoundCode) {
+    const CompoundMaster = mongoose.model('CompoundMaster');
+    const master = await CompoundMaster.findOne({ compoundCode: doc.compoundCode });
+    if (master) {
+      doc.compoundMasterId = master._id;
+    } else {
+      throw new Error(`CompoundMaster not found for code: ${doc.compoundCode}`);
+    }
+  }
 
   // If cover date exists, ensure no skim record has same date
   if (doc.coverCompoundProducedOn) {

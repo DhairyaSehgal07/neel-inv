@@ -118,6 +118,7 @@ export async function generateCompoundBatch(
         totalInventory,
         inventoryRemaining: totalInventory,
         consumed: 0,
+        compoundMasterId: master._id,
       };
 
       const createOptions = session ? { session } : {};

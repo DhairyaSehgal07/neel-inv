@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Layers, Package, FileText } from 'lucide-react';
+import { Settings, Layers, Package, FileText,Factory } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -36,6 +36,12 @@ const navigationItems = [
     href: '/dashboard/reports',
     icon: FileText,
     activePaths: ['/dashboard/reports'],
+  },
+  {
+    name: 'Raw Materials',
+    href: '/dashboard/raw-materials',
+    icon: Factory,
+    activePaths: ['/dashboard/raw-materials'],
   },
   {
     name: 'Settings',
