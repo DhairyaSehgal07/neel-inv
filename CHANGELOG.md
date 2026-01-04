@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.20](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.19...v0.1.20) (2026-01-04)
+
+
+### Features
+
+* add raw materials management system with CRUD operations ([24ee40b](https://github.com/DhairyaSehgal07/neel-inv/commit/24ee40bbceafbe5b215117446a22032c0e4942d9))
+
 ### [0.1.19](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.18...v0.1.19) (2025-12-29)
 
 
