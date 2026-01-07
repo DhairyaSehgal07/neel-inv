@@ -1,6 +1,6 @@
 {
   "name": "neelkanthrubbermills",
-  "version": "0.1.20",
+  "version": "0.1.21",
   "type": "module",
   "private": true,
   "scripts": {
@@ -14,7 +14,8 @@
     "release": "standard-version",
     "release:minor": "standard-version --release-as minor",
     "release:major": "standard-version --release-as major",
-    "release:patch": "standard-version --release-as patch"
+    "release:patch": "standard-version --release-as patch",
+    "migrate:compound-batches": "node scripts/migrate-compound-batches-materials.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.21](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.20...v0.1.21) (2026-01-07)
+
+
+### Features
+
+* improve material code randomization in compound batches migration script ([7727a51](https://github.com/DhairyaSehgal07/neel-inv/commit/7727a51c3eac778516de8ced74c5fa9a5dc9d3bc))
+
+
+### Bug Fixes
+
+* add error property to ApiResponse type to fix TypeScript errors ([facc98a](https://github.com/DhairyaSehgal07/neel-inv/commit/facc98abb02890c32cc24ec470d7f7a14f758c0c))
+
 ### [0.1.20](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.19...v0.1.20) (2026-01-04)
 
 
