@@ -7,7 +7,7 @@ import Belt, { BeltDoc } from '@/model/Belt';
 import BeltHistory from '@/model/BeltHistory';
 import Fabric, { FabricDoc } from '@/model/Fabric';
 import CompoundMaster from '@/model/CompoundMaster';
-import { consumeCompound } from './compound-service';
+import { consumeCompound, consumeFromSelectedBatches } from './compound-service';
 import { compoundNameToCode, formatLocalDate } from '@/lib/helpers/compound-utils';
 import { BeltFormData } from '@/types/belt';
 
@@ -271,6 +271,168 @@ export async function createBelt(
     skimBatchesUsed: skimUsage.batchesUsed,
     status: (formData.status as 'Dispatched' | 'In Production') || 'In Production',
     entryType: 'Auto',
+  };
+
+  // Create Belt document
+  const createOptions = session ? { session } : {};
+  const created = await Belt.create([beltData], createOptions);
+  const belt = created[0];
+
+  // Create BeltHistory snapshot
+  const historyData = {
+    beltId: belt._id,
+    beltNumber: belt.beltNumber,
+    rating: belt.rating,
+    fabricId: belt.fabricId,
+    coverBatchesUsed: belt.coverBatchesUsed,
+    skimBatchesUsed: belt.skimBatchesUsed,
+  };
+
+  await BeltHistory.create([historyData], createOptions);
+
+  return belt;
+}
+
+export interface CreateManualBeltPayload {
+  formData: BeltFormData;
+  coverBatches: Array<{ batchId: string; consumedKg: number }>;
+  skimBatches: Array<{ batchId: string; consumedKg: number }>;
+}
+
+/**
+ * Create a new belt manually using selected compound batches
+ * Does not create new batches, only consumes from existing ones
+ */
+export async function createManualBelt(
+  payload: CreateManualBeltPayload,
+  session?: ClientSession
+): Promise<BeltDoc> {
+  const { formData, coverBatches, skimBatches } = payload;
+
+  // Validate that batches are provided
+  if (!coverBatches || coverBatches.length === 0) {
+    throw new Error('At least one cover compound batch is required');
+  }
+
+  if (!skimBatches || skimBatches.length === 0) {
+    throw new Error('At least one skim compound batch is required');
+  }
+
+  // Validate total consumption matches
+  const totalCoverConsumed = coverBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
+  const totalSkimConsumed = skimBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
+
+  const coverConsumedKg =
+    typeof formData.coverCompoundConsumed === 'number'
+      ? formData.coverCompoundConsumed
+      : typeof formData.coverCompoundConsumed === 'string'
+        ? parseFloat(formData.coverCompoundConsumed)
+        : 0;
+
+  const skimConsumedKg =
+    typeof formData.skimCompoundConsumed === 'number'
+      ? formData.skimCompoundConsumed
+      : typeof formData.skimCompoundConsumed === 'string'
+        ? parseFloat(formData.skimCompoundConsumed)
+        : 0;
+
+  if (Math.abs(totalCoverConsumed - coverConsumedKg) > 0.01) {
+    throw new Error(
+      `Cover compound consumption mismatch. Form shows ${coverConsumedKg} kg but selected batches total ${totalCoverConsumed} kg.`
+    );
+  }
+
+  if (Math.abs(totalSkimConsumed - skimConsumedKg) > 0.01) {
+    throw new Error(
+      `Skim compound consumption mismatch. Form shows ${skimConsumedKg} kg but selected batches total ${totalSkimConsumed} kg.`
+    );
+  }
+
+  // Parse fabric consumed (can be number or string)
+  const fabricConsumedMeters =
+    typeof formData.fabricConsumed === 'number'
+      ? formData.fabricConsumed
+      : typeof formData.fabricConsumed === 'string'
+        ? parseFloat(formData.fabricConsumed)
+        : undefined;
+
+  // Ensure/Create Fabric record
+  const fabricId = await ensureFabric(
+    {
+      type: formData.fabricType,
+      rating: formData.rating,
+      strength: typeof formData.beltStrength === 'number' ? formData.beltStrength : undefined,
+      supplier: formData.fabricSupplier,
+      rollNumber: formData.rollNumber,
+      consumedMeters: fabricConsumedMeters !== undefined && !isNaN(fabricConsumedMeters) ? fabricConsumedMeters : undefined,
+    },
+    session
+  );
+
+  // Consume from selected cover batches
+  const coverUsage = await consumeFromSelectedBatches(coverBatches, session);
+
+  // Consume from selected skim batches
+  const skimUsage = await consumeFromSelectedBatches(skimBatches, session);
+
+  // Helper function to parse number from string or number
+  const parseNumber = (value: number | string | undefined): number | undefined => {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      const parsed = parseFloat(value);
+      return isNaN(parsed) ? undefined : parsed;
+    }
+    return undefined;
+  };
+
+  // Prepare belt data
+  const beltData: Partial<BeltDoc> = {
+    beltNumber: formData.beltNumber,
+    rating: formData.rating,
+    fabricId,
+    topCoverMm: parseNumber(formData.topCover),
+    bottomCoverMm: parseNumber(formData.bottomCover),
+    beltLengthM: parseNumber(formData.beltLength),
+    beltWidthMm: parseNumber(formData.beltWidth),
+    edge: formData.edge as 'Cut' | 'Moulded' | undefined,
+    breakerPly: formData.breakerPly,
+    breakerPlyRemarks: formData.breakerPlyRemarks,
+    carcassMm: parseNumber(formData.carcass),
+    coverGrade: formData.coverGrade,
+    orderNumber: formData.orderNumber,
+    buyerName: formData.buyerName,
+    orderDate: formData.orderDate ? formatLocalDate(formData.orderDate) : undefined,
+    deliveryDeadline: formData.deliveryDeadline
+      ? formatLocalDate(formData.deliveryDeadline)
+      : undefined,
+    process: {
+      calendaringDate: formData.calendaringDate
+        ? formatLocalDate(formData.calendaringDate)
+        : undefined,
+      calendaringMachine: formData.calendaringStation,
+      greenBeltDate: formData.greenBeltDate ? formatLocalDate(formData.greenBeltDate) : undefined,
+      greenBeltMachine: formData.greenBeltStation,
+      curingDate: formData.curingDate ? formatLocalDate(formData.curingDate) : undefined,
+      curingMachine: formData.pressStation,
+      inspectionDate: formData.inspectionDate
+        ? formatLocalDate(formData.inspectionDate)
+        : undefined,
+      inspectionMachine: formData.inspectionStation,
+      pidDate: formData.pdiDate ? formatLocalDate(formData.pdiDate) : undefined,
+      packagingDate: formData.packagingDate ? formatLocalDate(formData.packagingDate) : undefined,
+      dispatchDate: formData.dispatchDate ? formatLocalDate(formData.dispatchDate) : undefined,
+      coverCompoundProducedOn: formData.coverCompoundProducedOn
+        ? formatLocalDate(formData.coverCompoundProducedOn)
+        : undefined,
+      skimCompoundProducedOn: formData.skimCompoundProducedOn
+        ? formatLocalDate(formData.skimCompoundProducedOn)
+        : undefined,
+    },
+    coverBatchesUsed: coverUsage.batchesUsed,
+    skimBatchesUsed: skimUsage.batchesUsed,
+    status: (formData.status as 'Dispatched' | 'In Production') || 'In Production',
+    entryType: 'Manual',
   };
 
   // Create Belt document

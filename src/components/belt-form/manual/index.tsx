@@ -11,10 +11,13 @@ import { CompoundInfoStep } from './compound-info-step';
 import { ProductionDatesStep } from './production-dates-step';
 import { ReviewAndSubmitStep } from './review-and-submit-step';
 import { BeltFormData } from '@/types/belt';
+import { CompoundBatchDoc } from '@/model/CompoundBatch';
 
 // Main Form Component
 export const ManualBeltForm = () => {
   const [activeTab, setActiveTab] = useState('step1');
+  const [coverBatches, setCoverBatches] = useState<Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>>([]);
+  const [skimBatches, setSkimBatches] = useState<Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>>([]);
 
   const form = useForm<BeltFormData>({
     defaultValues: {
@@ -78,6 +81,8 @@ export const ManualBeltForm = () => {
   const handleSubmitSuccess = () => {
     setActiveTab('step1');
     form.reset();
+    setCoverBatches([]);
+    setSkimBatches([]);
   };
 
   return (
@@ -146,7 +151,15 @@ export const ManualBeltForm = () => {
             </TabsContent>
 
             <TabsContent value="step4" className="space-y-6 mt-0">
-              <CompoundInfoStep form={form} onNext={handleNext} onBack={handleBack} />
+              <CompoundInfoStep
+                form={form}
+                onNext={handleNext}
+                onBack={handleBack}
+                onBatchesChange={(cover, skim) => {
+                  setCoverBatches(cover);
+                  setSkimBatches(skim);
+                }}
+              />
             </TabsContent>
 
             <TabsContent value="step5" className="space-y-6 mt-0">
@@ -158,6 +171,8 @@ export const ManualBeltForm = () => {
                 form={form}
                 onBack={handleBack}
                 onSuccess={handleSubmitSuccess}
+                coverBatches={coverBatches}
+                skimBatches={skimBatches}
               />
             </TabsContent>
           </Tabs>

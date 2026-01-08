@@ -7,12 +7,15 @@ import { toast } from 'sonner';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
 import { format } from 'date-fns';
-import { useCreateBeltMutation } from '@/services/api/queries/belts/clientBelts';
+import { useCreateManualBeltMutation } from '@/services/api/queries/belts/clientBelts';
+import { CompoundBatchDoc } from '@/model/CompoundBatch';
 
 interface ReviewAndSubmitStepProps {
   form: UseFormReturn<BeltFormData>;
   onBack: () => void;
   onSuccess: () => void;
+  coverBatches: Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>;
+  skimBatches: Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>;
 }
 
 const formatValue = (value: unknown): string => {
@@ -28,9 +31,9 @@ const formatValue = (value: unknown): string => {
   return String(value);
 };
 
-export const ReviewAndSubmitStep = ({ form, onBack, onSuccess }: ReviewAndSubmitStepProps) => {
+export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, skimBatches }: ReviewAndSubmitStepProps) => {
   const { getValues } = form;
-  const createBeltMutation = useCreateBeltMutation();
+  const createBeltMutation = useCreateManualBeltMutation();
 
   const formData = getValues();
 
@@ -234,21 +237,37 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess }: ReviewAndSubmit
           <CardContent className="space-y-2 text-sm">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <span className="font-medium">Cover Compound Type:</span>{' '}
-                {formatValue(formData.coverCompoundType)}
-              </div>
-              <div>
-                <span className="font-medium">Skim Compound Type:</span>{' '}
-                {formatValue(formData.skimCompoundType)}
-              </div>
-              <div>
                 <span className="font-medium">Cover Compound Consumed:</span>{' '}
-                {formatValue(formData.coverCompoundConsumed)}
+                {formatValue(formData.coverCompoundConsumed)} kg
               </div>
               <div>
                 <span className="font-medium">Skim Compound Consumed:</span>{' '}
-                {formatValue(formData.skimCompoundConsumed)}
+                {formatValue(formData.skimCompoundConsumed)} kg
               </div>
+              {coverBatches && coverBatches.length > 0 && (
+                <div className="col-span-2">
+                  <span className="font-medium">Cover Batches:</span>
+                  <ul className="list-disc list-inside mt-1">
+                    {coverBatches.map((batch, idx) => (
+                      <li key={idx} className="text-xs">
+                        {batch.batch.compoundName || batch.batch.compoundCode} - {batch.consumedKg.toFixed(2)} kg
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {skimBatches && skimBatches.length > 0 && (
+                <div className="col-span-2">
+                  <span className="font-medium">Skim Batches:</span>
+                  <ul className="list-disc list-inside mt-1">
+                    {skimBatches.map((batch, idx) => (
+                      <li key={idx} className="text-xs">
+                        {batch.batch.compoundName || batch.batch.compoundCode} - {batch.consumedKg.toFixed(2)} kg
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

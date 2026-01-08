@@ -1,190 +1,199 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
+  FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  cover_weight_kg,
-  skim_weight_kg,
-  parseNumberOfPliesFromRating,
-  skim_thickness_from_strength,
-} from '@/lib/helpers/calculations';
 import type { UseFormReturn } from 'react-hook-form';
 import { BeltFormData } from '@/types/belt';
-import SearchSelect from '@/components/search-select';
-import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
-import { useRatingsQuery } from '@/services/api/queries/ratings/clientRatings';
-import { useSession } from 'next-auth/react';
-import { roundToNearest5 } from '@/lib/utils';
+import { useAvailableCompoundsQuery } from '@/services/api/queries/compounds/clientAvailableCompounds';
+import { CompoundBatchDoc } from '@/model/CompoundBatch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import { X } from 'lucide-react';
 
 interface CompoundInfoStepProps {
   form: UseFormReturn<BeltFormData>;
   onNext: () => void;
   onBack: () => void;
+  onBatchesChange: (
+    cover: Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>,
+    skim: Array<{ batchId: string; batch: CompoundBatchDoc; consumedKg: number }>
+  ) => void;
 }
 
-export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps) => {
-  const { handleSubmit, control, watch, setValue } = form;
-  const { data: session } = useSession();
-  const isAdmin = session?.user?.role === 'Admin';
-  const { data } = useCompoundMastersQuery();
-  const { data: ratings } = useRatingsQuery();
+interface SelectedBatch {
+  batchId: string;
+  batch: CompoundBatchDoc;
+  consumedKg: number;
+}
 
-  // Filter and transform compound masters for cover compounds
-  const coverCompoundOptions = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter((compound) => compound.category === 'cover')
-      .map((compound) => ({
-        label: compound.compoundName,
-        value: compound.compoundName, // Store compoundName for belt service to convert to code
-      }));
-  }, [data]);
+const formatCompoundCode = (batch: CompoundBatchDoc): string => {
+  const code = batch.compoundCode;
+  const producedOnDate = batch.coverCompoundProducedOn || batch.skimCompoundProducedOn;
+  const dateToUse = producedOnDate || batch.date;
+  const formattedDate = dateToUse ? dateToUse.replace(/-/g, '') : '';
+  return `${code}-${formattedDate}`;
+};
 
-  // Filter and transform compound masters for skim compounds
-  const skimCompoundOptions = useMemo(() => {
-    if (!data) return [];
-    return data
-      .filter((compound) => compound.category === 'skim')
-      .map((compound) => ({
-        label: compound.compoundName,
-        value: compound.compoundName, // Store compoundName for belt service to convert to code
-      }));
-  }, [data]);
+export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: CompoundInfoStepProps) => {
+  const { control, watch } = form;
+  const { data: availableCompounds } = useAvailableCompoundsQuery();
 
-  const topCover = watch('topCover');
-  const bottomCover = watch('bottomCover');
-  const beltWidth = watch('beltWidth');
-  const beltLength = watch('beltLength');
-  const rating = watch('rating');
+  const [coverBatches, setCoverBatches] = useState<SelectedBatch[]>([]);
+  const [skimBatches, setSkimBatches] = useState<SelectedBatch[]>([]);
 
-  const fabricStrength = useMemo(() => {
-    if (!rating || !ratings) return undefined;
-    return ratings.find((r) => r.rating === rating)?.strength;
-  }, [rating, ratings]);
+  const coverCompoundConsumed = watch('coverCompoundConsumed');
+  const skimCompoundConsumed = watch('skimCompoundConsumed');
 
-  // Calculate intermediate values for cover compound
-  const coverCalculationValues = useMemo(() => {
-    if (!beltWidth || !beltLength || !topCover || !bottomCover) return null;
-    return {
-      topCoverMm: parseFloat(String(topCover)),
-      bottomCoverMm: parseFloat(String(bottomCover)),
-      coverSG: 1.25,
-      beltWidthM: parseFloat(String(beltWidth)) / 1000,
-      beltLengthM: parseFloat(String(beltLength)),
-    };
-  }, [topCover, bottomCover, beltWidth, beltLength]);
+  // Filter and classify compounds as cover or skim
+  const coverBatchesAvailable = useMemo(() => {
+    if (!availableCompounds) return [];
+    return availableCompounds.filter((batch) => batch.coverCompoundProducedOn && batch.inventoryRemaining > 0);
+  }, [availableCompounds]);
 
-  // Calculate intermediate values for skim compound
-  const skimCalculationValues = useMemo(() => {
-    if (!beltWidth || !beltLength || !rating || !fabricStrength) return null;
-    return {
-      fabricStrength,
-      numberOfPlies: parseNumberOfPliesFromRating(rating),
-      skimThicknessMmPerPly: skim_thickness_from_strength(fabricStrength),
-      skimSG: 1.25,
-      beltWidthM: parseFloat(String(beltWidth)) / 1000,
-      beltLengthM: parseFloat(String(beltLength)),
-    };
-  }, [beltWidth, beltLength, rating, fabricStrength]);
+  const skimBatchesAvailable = useMemo(() => {
+    if (!availableCompounds) return [];
+    return availableCompounds.filter((batch) => batch.skimCompoundProducedOn && batch.inventoryRemaining > 0);
+  }, [availableCompounds]);
 
-  useEffect(() => {
-    if (beltWidth && beltLength && topCover && bottomCover) {
-      // Convert belt width from mm to m
-      const beltWidthM = parseFloat(String(beltWidth)) / 1000;
-      const beltLengthM = parseFloat(String(beltLength));
-      const topCoverMm = parseFloat(String(topCover));
-      const bottomCoverMm = parseFloat(String(bottomCover));
-
-      // Get cover compound specific gravity
-      const coverSG = 1.25;
-
-      // Calculate cover weight
-      const coverWeight = cover_weight_kg(
-        topCoverMm,
-        bottomCoverMm,
-        coverSG,
-        beltWidthM,
-        beltLengthM
-      );
-      setValue('coverCompoundConsumed', roundToNearest5(coverWeight).toFixed(2));
+  const handleCoverBatchToggle = (batch: CompoundBatchDoc, checked: boolean) => {
+    if (checked) {
+      setCoverBatches((prev) => [...prev, { batchId: batch._id.toString(), batch, consumedKg: 0 }]);
+    } else {
+      setCoverBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
     }
-  }, [topCover, bottomCover, beltWidth, beltLength, setValue]);
+  };
 
-  useEffect(() => {
-    if (beltWidth && beltLength && rating && fabricStrength) {
-      // Convert belt width from mm to m
-      const beltWidthM = parseFloat(String(beltWidth)) / 1000;
-      const beltLengthM = parseFloat(String(beltLength));
-
-      // Extract number of plies from rating
-      const numberOfPlies = parseNumberOfPliesFromRating(rating);
-
-      // Get skim thickness per ply based on fabric strength
-      const skimThicknessMmPerPly = skim_thickness_from_strength(fabricStrength);
-
-      // Get skim compound specific gravity
-      const skimSG = 1.25;
-
-      // Calculate skim weight
-      const skimWeight = skim_weight_kg(
-        skimThicknessMmPerPly,
-        numberOfPlies,
-        skimSG,
-        beltWidthM,
-        beltLengthM
-      );
-      setValue('skimCompoundConsumed', roundToNearest5(skimWeight).toFixed(2));
+  const handleSkimBatchToggle = (batch: CompoundBatchDoc, checked: boolean) => {
+    if (checked) {
+      setSkimBatches((prev) => [...prev, { batchId: batch._id.toString(), batch, consumedKg: 0 }]);
+    } else {
+      setSkimBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
     }
-  }, [beltWidth, beltLength, rating, fabricStrength, setValue]);
+  };
+
+  const handleCoverConsumedChange = (batchId: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setCoverBatches((prev) =>
+      prev.map((b) => (b.batchId === batchId ? { ...b, consumedKg: numValue } : b))
+    );
+  };
+
+  const handleSkimConsumedChange = (batchId: string, value: string) => {
+    const numValue = parseFloat(value) || 0;
+    setSkimBatches((prev) =>
+      prev.map((b) => (b.batchId === batchId ? { ...b, consumedKg: numValue } : b))
+    );
+  };
+
+  const removeCoverBatch = (batchId: string) => {
+    setCoverBatches((prev) => prev.filter((b) => b.batchId !== batchId));
+  };
+
+  const removeSkimBatch = (batchId: string) => {
+    setSkimBatches((prev) => prev.filter((b) => b.batchId !== batchId));
+  };
+
+  const totalCoverConsumed = coverBatches.reduce((sum, b) => sum + b.consumedKg, 0);
+  const totalSkimConsumed = skimBatches.reduce((sum, b) => sum + b.consumedKg, 0);
+
+  const handleNext = () => {
+    // Validate total consumption
+    const coverConsumed =
+      typeof coverCompoundConsumed === 'number'
+        ? coverCompoundConsumed
+        : typeof coverCompoundConsumed === 'string'
+          ? parseFloat(coverCompoundConsumed)
+          : 0;
+
+    const skimConsumed =
+      typeof skimCompoundConsumed === 'number'
+        ? skimCompoundConsumed
+        : typeof skimCompoundConsumed === 'string'
+          ? parseFloat(skimCompoundConsumed)
+          : 0;
+
+    if (coverConsumed <= 0) {
+      toast.error('Cover compound consumed must be greater than 0');
+      return;
+    }
+
+    if (skimConsumed <= 0) {
+      toast.error('Skim compound consumed must be greater than 0');
+      return;
+    }
+
+    if (coverBatches.length === 0) {
+      toast.error('Please select at least one cover compound batch');
+      return;
+    }
+
+    if (skimBatches.length === 0) {
+      toast.error('Please select at least one skim compound batch');
+      return;
+    }
+
+    // Validate that all selected batches have consumption values
+    for (const batch of coverBatches) {
+      if (batch.consumedKg <= 0) {
+        toast.error(`Please enter consumption amount for cover batch ${formatCompoundCode(batch.batch)}`);
+        return;
+      }
+      if (batch.consumedKg > batch.batch.inventoryRemaining) {
+        toast.error(
+          `Cover batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+        );
+        return;
+      }
+    }
+
+    for (const batch of skimBatches) {
+      if (batch.consumedKg <= 0) {
+        toast.error(`Please enter consumption amount for skim batch ${formatCompoundCode(batch.batch)}`);
+        return;
+      }
+      if (batch.consumedKg > batch.batch.inventoryRemaining) {
+        toast.error(
+          `Skim batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+        );
+        return;
+      }
+    }
+
+    // Validate totals match
+    if (Math.abs(totalCoverConsumed - coverConsumed) > 0.01) {
+      toast.error(
+        `Cover compound consumption mismatch. Total from batches: ${totalCoverConsumed.toFixed(2)} kg, but form shows: ${coverConsumed} kg`
+      );
+      return;
+    }
+
+    if (Math.abs(totalSkimConsumed - skimConsumed) > 0.01) {
+      toast.error(
+        `Skim compound consumption mismatch. Total from batches: ${totalSkimConsumed.toFixed(2)} kg, but form shows: ${skimConsumed} kg`
+      );
+      return;
+    }
+
+    // Store selected batches via callback
+    onBatchesChange(coverBatches, skimBatches);
+
+    onNext();
+  };
 
   return (
     <Form {...form}>
-      <div className="grid gap-y-4">
-        <FormField
-          control={control}
-          name="coverCompoundType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cover Compound Type</FormLabel>
-              <FormControl>
-                <SearchSelect
-                  options={coverCompoundOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select a cover compound"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name="skimCompoundType"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Skim Compound Type</FormLabel>
-              <FormControl>
-                <SearchSelect
-                  options={skimCompoundOptions}
-                  value={field.value}
-                  onChange={field.onChange}
-                  placeholder="Select a skim compound"
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
-
+      <div className="space-y-6">
         <FormField
           control={control}
           name="coverCompoundConsumed"
@@ -192,43 +201,101 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
             <FormItem>
               <FormLabel>Cover Compound Consumed (kg)</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  placeholder="Enter cover compound consumed"
+                  autoComplete="off"
+                  type="number"
+                  step="0.01"
+                />
               </FormControl>
-              {isAdmin && (<FormDescription>Calculated: thickness_mm × SG × 1.03 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
-              {isAdmin && coverCalculationValues && (
-                <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
-                  <div className="font-medium text-xs text-muted-foreground mb-2">
-                    Calculation Values:
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      Top Cover:{' '}
-                      <span className="font-medium">{coverCalculationValues.topCoverMm} mm</span>
-                    </div>
-                    <div>
-                      Bottom Cover:{' '}
-                      <span className="font-medium">{coverCalculationValues.bottomCoverMm} mm</span>
-                    </div>
-                    <div>
-                      Cover SG:{' '}
-                      <span className="font-medium">{coverCalculationValues.coverSG}</span>
-                    </div>
-                    <div>
-                      Belt Width:{' '}
-                      <span className="font-medium">
-                        {coverCalculationValues.beltWidthM.toFixed(3)} m
-                      </span>
-                    </div>
-                    <div className="col-span-2">
-                      Belt Length:{' '}
-                      <span className="font-medium">{coverCalculationValues.beltLengthM} m</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <FormMessage />
             </FormItem>
           )}
         />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Select Cover Compound Batches</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Total Selected: {totalCoverConsumed.toFixed(2)} kg / Required:{' '}
+              {typeof coverCompoundConsumed === 'number'
+                ? coverCompoundConsumed
+                : typeof coverCompoundConsumed === 'string'
+                  ? parseFloat(coverCompoundConsumed) || 0
+                  : 0}{' '}
+              kg
+            </div>
+            <div className="max-h-64 overflow-y-auto border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Select</TableHead>
+                    <TableHead>Compound</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Available (kg)</TableHead>
+                    <TableHead>Consumed (kg)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {coverBatchesAvailable.map((batch) => {
+                    const isSelected = coverBatches.some((b) => b.batchId === batch._id.toString());
+                    const selectedBatch = coverBatches.find((b) => b.batchId === batch._id.toString());
+                    return (
+                      <TableRow key={batch._id.toString()}>
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleCoverBatchToggle(batch, checked as boolean)}
+                          />
+                        </TableCell>
+                        <TableCell>{batch.compoundName || batch.compoundCode}</TableCell>
+                        <TableCell>{batch.coverCompoundProducedOn || batch.date}</TableCell>
+                        <TableCell>{batch.inventoryRemaining.toFixed(2)}</TableCell>
+                        <TableCell>
+                          {isSelected && (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max={batch.inventoryRemaining}
+                              value={selectedBatch?.consumedKg || 0}
+                              onChange={(e) => handleCoverConsumedChange(batch._id.toString(), e.target.value)}
+                              className="w-24"
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {coverBatches.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Selected Batches:</div>
+                {coverBatches.map((selected) => (
+                  <div key={selected.batchId} className="flex items-center justify-between text-sm border p-2 rounded">
+                    <span>
+                      {selected.batch.compoundName || selected.batch.compoundCode} - {selected.consumedKg.toFixed(2)} kg
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeCoverBatch(selected.batchId)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <FormField
           control={control}
@@ -237,56 +304,107 @@ export const CompoundInfoStep = ({ form, onNext, onBack }: CompoundInfoStepProps
             <FormItem>
               <FormLabel>Skim Compound Consumed (kg)</FormLabel>
               <FormControl>
-                <Input {...field} value={field.value ?? ''} disabled placeholder="Auto-calculated" autoComplete="off" />
+                <Input
+                  {...field}
+                  value={field.value ?? ''}
+                  placeholder="Enter skim compound consumed"
+                  autoComplete="off"
+                  type="number"
+                  step="0.01"
+                />
               </FormControl>
-              {isAdmin && (<FormDescription>Calculated: (skim_thickness_mm_per_ply × plies) × SG × 1.03 × 1.02 × belt_width_m × belt_length_m</FormDescription>)}
-              {isAdmin && skimCalculationValues && (
-                <div className="mt-2 p-3 bg-muted/50 rounded-md text-sm space-y-1">
-                  <div className="font-medium text-xs text-muted-foreground mb-2">
-                    Calculation Values:
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      Fabric Strength:{' '}
-                      <span className="font-medium">
-                        {skimCalculationValues.fabricStrength} N/mm
-                      </span>
-                    </div>
-                    <div>
-                      Number of Plies:{' '}
-                      <span className="font-medium">{skimCalculationValues.numberOfPlies}</span>
-                    </div>
-                    <div>
-                      Skim Thickness/Ply:{' '}
-                      <span className="font-medium">
-                        {skimCalculationValues.skimThicknessMmPerPly} mm
-                      </span>
-                    </div>
-                    <div>
-                      Skim SG: <span className="font-medium">{skimCalculationValues.skimSG}</span>
-                    </div>
-                    <div>
-                      Belt Width:{' '}
-                      <span className="font-medium">
-                        {skimCalculationValues.beltWidthM.toFixed(3)} m
-                      </span>
-                    </div>
-                    <div>
-                      Belt Length:{' '}
-                      <span className="font-medium">{skimCalculationValues.beltLengthM} m</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+              <FormMessage />
             </FormItem>
           )}
         />
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Select Skim Compound Batches</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Total Selected: {totalSkimConsumed.toFixed(2)} kg / Required:{' '}
+              {typeof skimCompoundConsumed === 'number'
+                ? skimCompoundConsumed
+                : typeof skimCompoundConsumed === 'string'
+                  ? parseFloat(skimCompoundConsumed) || 0
+                  : 0}{' '}
+              kg
+            </div>
+            <div className="max-h-64 overflow-y-auto border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Select</TableHead>
+                    <TableHead>Compound</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Available (kg)</TableHead>
+                    <TableHead>Consumed (kg)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {skimBatchesAvailable.map((batch) => {
+                    const isSelected = skimBatches.some((b) => b.batchId === batch._id.toString());
+                    const selectedBatch = skimBatches.find((b) => b.batchId === batch._id.toString());
+                    return (
+                      <TableRow key={batch._id.toString()}>
+                        <TableCell>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => handleSkimBatchToggle(batch, checked as boolean)}
+                          />
+                        </TableCell>
+                        <TableCell>{batch.compoundName || batch.compoundCode}</TableCell>
+                        <TableCell>{batch.skimCompoundProducedOn || batch.date}</TableCell>
+                        <TableCell>{batch.inventoryRemaining.toFixed(2)}</TableCell>
+                        <TableCell>
+                          {isSelected && (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              max={batch.inventoryRemaining}
+                              value={selectedBatch?.consumedKg || 0}
+                              onChange={(e) => handleSkimConsumedChange(batch._id.toString(), e.target.value)}
+                              className="w-24"
+                            />
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            {skimBatches.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Selected Batches:</div>
+                {skimBatches.map((selected) => (
+                  <div key={selected.batchId} className="flex items-center justify-between text-sm border p-2 rounded">
+                    <span>
+                      {selected.batch.compoundName || selected.batch.compoundCode} - {selected.consumedKg.toFixed(2)} kg
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeSkimBatch(selected.batchId)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <div className="flex justify-between">
           <Button type="button" variant="outline" size="sm" onClick={onBack}>
             Back
           </Button>
-          <Button type="button" size="sm" onClick={handleSubmit(onNext)}>
+          <Button type="button" size="sm" onClick={handleNext}>
             Next
           </Button>
         </div>

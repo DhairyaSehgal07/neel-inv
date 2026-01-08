@@ -311,3 +311,101 @@ export async function consumeCompound(
     batchesUsed,
   };
 }
+
+/**
+ * Consume compound from selected batches
+ * Validates inventory before consuming and throws error if insufficient
+ */
+export async function consumeFromSelectedBatches(
+  selectedBatches: Array<{ batchId: string | mongoose.Types.ObjectId; consumedKg: number }>,
+  session?: ClientSession
+): Promise<ConsumeResult> {
+  const batchesUsed: BatchUsage[] = [];
+  let totalConsumed = 0;
+
+  // First, validate all batches have enough inventory
+  const batchIds = selectedBatches.map((batch) =>
+    typeof batch.batchId === 'string' ? new mongoose.Types.ObjectId(batch.batchId) : batch.batchId
+  );
+
+  const query = CompoundBatch.find({ _id: { $in: batchIds } });
+  if (session) {
+    query.session(session);
+  }
+  const batches = await query.exec();
+
+  // Create a map for quick lookup
+  const batchMap = new Map<string, CompoundBatchDoc>();
+  batches.forEach((batch) => {
+    const batchIdStr = batch._id.toString();
+    batchMap.set(batchIdStr, batch);
+  });
+
+  // Validate inventory for each selected batch
+  for (const selectedBatch of selectedBatches) {
+    const batchIdStr =
+      typeof selectedBatch.batchId === 'string'
+        ? selectedBatch.batchId
+        : selectedBatch.batchId.toString();
+    const batch = batchMap.get(batchIdStr);
+
+    if (!batch) {
+      throw new Error(`Batch ${batchIdStr} not found`);
+    }
+
+    if (batch.inventoryRemaining < selectedBatch.consumedKg) {
+      throw new Error(
+        `Not enough inventory. Batch ${batch.compoundCode} (${batch.date}) has ${batch.inventoryRemaining} kg remaining, but ${selectedBatch.consumedKg} kg is required.`
+      );
+    }
+  }
+
+  // Now consume from each batch
+  for (const selectedBatch of selectedBatches) {
+    const batchIdStr =
+      typeof selectedBatch.batchId === 'string'
+        ? selectedBatch.batchId
+        : selectedBatch.batchId.toString();
+    const batch = batchMap.get(batchIdStr)!;
+
+    // Atomically update batch
+    const updateQuery = CompoundBatch.findOneAndUpdate(
+      {
+        _id: batch._id,
+        inventoryRemaining: { $gte: selectedBatch.consumedKg }, // Conditional: only update if enough inventory
+      },
+      {
+        $inc: {
+          inventoryRemaining: -selectedBatch.consumedKg,
+          consumed: selectedBatch.consumedKg,
+        },
+      },
+      { new: true }
+    );
+
+    if (session) {
+      updateQuery.session(session);
+    }
+
+    const updated = await updateQuery.exec();
+
+    if (!updated) {
+      // This should not happen if validation passed, but handle it anyway
+      throw new Error(
+        `Failed to consume from batch ${batch.compoundCode} (${batch.date}). Inventory may have changed.`
+      );
+    }
+
+    batchesUsed.push({
+      batchId: updated._id as mongoose.Types.ObjectId,
+      consumedKg: selectedBatch.consumedKg,
+    });
+
+    totalConsumed += selectedBatch.consumedKg;
+  }
+
+  return {
+    totalConsumed,
+    batchesUsed,
+  };
+}

@@ -71,3 +71,34 @@ export function useUpdateCompoundBatchMutation() {
     },
   });
 }
+
+interface CreateCompoundBatchPayload {
+  compoundCode: string;
+  compoundName?: string;
+  date: string;
+  batches: number;
+  weightPerBatch: number;
+  coverCompoundProducedOn?: string;
+  skimCompoundProducedOn?: string;
+}
+
+async function createCompoundBatchClient(
+  payload: CreateCompoundBatchPayload
+): Promise<CompoundBatchDoc> {
+  const response = await api.post<ApiResponse<CompoundBatchDoc>>('/api/compounds/batches', payload);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to create compound batch');
+  }
+  return response.data.data!;
+}
+
+export function useCreateCompoundBatchMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createCompoundBatchClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['compoundBatches'] });
+      queryClient.invalidateQueries({ queryKey: ['availableCompounds'] });
+    },
+  });
+}
