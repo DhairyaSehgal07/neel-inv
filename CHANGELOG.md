@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.23](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.22...v0.1.23) (2026-01-08)
+
+
+### Features
+
+* add manual belt creation with multi-batch selection and inventory validation ([0e2056e](https://github.com/DhairyaSehgal07/neel-inv/commit/0e2056ed71859cc52a1a5c9b77b5f66444037ec5))
+
 ### [0.1.22](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.21...v0.1.22) (2026-01-08)
 
 
