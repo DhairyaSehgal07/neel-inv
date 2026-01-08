@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.22](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.21...v0.1.22) (2026-01-08)
+
+
+### Features
+
+* enhance compound batches report and raw materials management ([62b278e](https://github.com/DhairyaSehgal07/neel-inv/commit/62b278e68a2ee9e44ff0b4a403dd0b69d991487b))
+
+
+### Miscellaneous Chores
+
+* remove migration script for compound batches materials ([bd3e89d](https://github.com/DhairyaSehgal07/neel-inv/commit/bd3e89de236816aba60efac9cdcb7900b05cfb74))
+
 ### [0.1.21](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.20...v0.1.21) (2026-01-07)
 
 
