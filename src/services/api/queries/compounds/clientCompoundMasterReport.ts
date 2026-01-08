@@ -4,6 +4,11 @@ import { api } from '../../axios';
 import { useQuery } from '@tanstack/react-query';
 import { ApiResponse } from '@/types/apiResponse';
 
+export interface MaterialUsed {
+  materialName: string;
+  materialCode: string;
+}
+
 export interface CompoundMasterReportData {
   compoundCode: string;
   compoundName: string;
@@ -15,6 +20,7 @@ export interface CompoundMasterReportData {
   remaining: number;
   beltNumbers: string[];
   rawMaterials: string[];
+  materialsUsed: MaterialUsed[];
 }
 
 async function getCompoundMasterReportClient(): Promise<CompoundMasterReportData[]> {

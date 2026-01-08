@@ -25,6 +25,10 @@ export function DatePicker({
   className,
   id,
 }: DatePickerProps) {
+  // Validate date to prevent "Invalid time value" errors
+  const isValidDate = date && !isNaN(date.getTime());
+  const safeDate = isValidDate ? date : undefined;
+
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -33,23 +37,23 @@ export function DatePicker({
           variant={'outline'}
           className={cn(
             'w-full justify-start text-left font-normal',
-            !date && 'text-muted-foreground',
+            !safeDate && 'text-muted-foreground',
             className
           )}
           disabled={disabled}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, 'PPP') : <span>{placeholder}</span>}
+          {safeDate ? format(safeDate, 'PPP') : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start" sideOffset={8}>
         <Calendar
           mode="single"
-          selected={date}
+          selected={safeDate}
           onSelect={onDateChange}
           className="rounded-md border shadow-sm"
           captionLayout="dropdown"
-          defaultMonth={date}
+          defaultMonth={safeDate}
         />
       </PopoverContent>
     </Popover>

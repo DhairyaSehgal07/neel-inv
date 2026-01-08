@@ -65,33 +65,91 @@ export const columns: ColumnDef<RawMaterialDoc>[] = [
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
-      return new Date(dateA).getTime() - new Date(dateB).getTime();
+
+      // Parse YYYY-MM-DD format properly
+      const parseDate = (dateStr: string): number => {
+        if (!dateStr || typeof dateStr !== 'string') return 0;
+        const trimmed = dateStr.trim();
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+        if (!dateRegex.test(trimmed)) return 0;
+
+        const [year, month, day] = trimmed.split('-').map(Number);
+        if (isNaN(year) || isNaN(month) || isNaN(day)) return 0;
+
+        const date = new Date(year, month - 1, day);
+        return isNaN(date.getTime()) ? 0 : date.getTime();
+      };
+
+      return parseDate(dateA) - parseDate(dateB);
     },
     cell: ({ row }) => {
-      const date = row.original.date;
-      if (!date) return '-';
+      const dateStr = row.original.date;
+      if (!dateStr || typeof dateStr !== 'string') return '-';
+
+      const trimmed = dateStr.trim();
+      if (!trimmed) return '-';
+
+      // Helper function to format date as DD/MM/YYYY
+      const formatDateWithSlashes = (date: Date): string => {
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+      };
+
+      // Check if it's already in DD.MM.YYYY format (with dots) and convert to slashes
+      const dotFormatRegex = /^(\d{2})\.(\d{2})\.(\d{4})$/;
+      if (dotFormatRegex.test(trimmed)) {
+        return trimmed.replace(/\./g, '/');
+      }
+
+      // Check if it's in YYYY-MM-DD format
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+      if (dateRegex.test(trimmed)) {
+        // Parse YYYY-MM-DD format properly (local timezone)
+        try {
+          const [year, month, day] = trimmed.split('-').map(Number);
+
+          if (isNaN(year) || isNaN(month) || isNaN(day)) {
+            return trimmed;
+          }
+
+          // Create date in local timezone (month is 0-indexed)
+          const date = new Date(year, month - 1, day);
+
+          // Validate the date
+          if (isNaN(date.getTime())) {
+            return trimmed;
+          }
+
+          // Format the date with slashes
+          return formatDateWithSlashes(date);
+        } catch {
+          return trimmed;
+        }
+      }
+
+      // If not in expected format, try to parse as-is
       try {
-        return new Date(date).toLocaleDateString();
+        const date = new Date(trimmed);
+        if (isNaN(date.getTime())) {
+          // If can't parse, try to replace dots with slashes if present
+          if (trimmed.includes('.')) {
+            return trimmed.replace(/\./g, '/');
+          }
+          return trimmed; // Return original string if can't parse
+        }
+        return formatDateWithSlashes(date);
       } catch {
-        return date;
+        // If parsing fails, try to replace dots with slashes if present
+        if (trimmed.includes('.')) {
+          return trimmed.replace(/\./g, '/');
+        }
+        return trimmed;
       }
     },
   },
-  {
-    accessorKey: 'createdAt',
-    header: createSortableHeader('Created At'),
-    enableSorting: true,
-    sortingFn: (rowA, rowB) => {
-      const dateA = rowA.original.createdAt ? new Date(rowA.original.createdAt).getTime() : 0;
-      const dateB = rowB.original.createdAt ? new Date(rowB.original.createdAt).getTime() : 0;
-      return dateA - dateB;
-    },
-    cell: ({ row }) => {
-      const createdAt = row.original.createdAt;
-      if (!createdAt) return '-';
-      return new Date(createdAt).toLocaleDateString();
-    },
-  },
+
   {
     id: 'actions',
     cell: ({ row }) => <DataTableRowActions row={row} />,

@@ -23,6 +23,7 @@ async function getCompoundBatches(request: NextRequest) {
 
     // Default sorting: newest first
     // Populate compoundMasterId with rawMaterials from CompoundMaster
+    // materialsUsed is already included in the CompoundBatch document by default
     const batches = await CompoundBatch.find(query)
       .populate('compoundMasterId', 'rawMaterials')
       .sort({ date: -1 });

@@ -2,7 +2,7 @@
  * Compound utility functions for batch management
  */
 
-import { addDays, format, parseISO } from 'date-fns';
+import { addDays, format, parseISO, subMonths } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { random_value_100_110 } from './calculations';
 
@@ -75,4 +75,24 @@ export function compoundNameToCode(name: string): string {
  */
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Calculate date range for material code lookup
+ * @param productionDate - Production date in YYYY-MM-DD format
+ * @param monthsBack - Number of months to look back from production date (default: 3)
+ * @returns { startDate, endDate } in YYYY-MM-DD format
+ */
+export function getMaterialCodeDateRange(productionDate: string, monthsBack: number = 3): { startDate: string; endDate: string } {
+  const prodDate = parseISO(productionDate + 'T00:00:00');
+
+  // monthsBack months before (start of range)
+  const startDate = subMonths(prodDate, monthsBack);
+  // Production date (end of range - inclusive)
+  const endDate = prodDate;
+
+  return {
+    startDate: format(startDate, 'yyyy-MM-dd'),
+    endDate: format(endDate, 'yyyy-MM-dd'),
+  };
 }

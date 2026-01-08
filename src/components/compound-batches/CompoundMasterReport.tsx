@@ -47,6 +47,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 8,
     fontWeight: 'bold',
+    alignItems: 'center',
   },
   tableRow: {
     flexDirection: 'row',
@@ -54,18 +55,41 @@ const styles = StyleSheet.create({
     borderBottomColor: '#e5e7eb',
     paddingVertical: 6,
     paddingHorizontal: 8,
+    alignItems: 'center',
   },
-  col1: { width: '4%', fontSize: 7 }, // S.No.
-  col2: { width: '10%', fontSize: 7 }, // Compound Code
-  col3: { width: '12%', fontSize: 7 }, // Compound Name
-  col4: { width: '8%', fontSize: 7 }, // Produced On
-  col5: { width: '8%', fontSize: 7 }, // Consumed On
-  col6: { width: '6%', fontSize: 7 }, // Number of Batches
-  col7: { width: '8%', fontSize: 7 }, // Weight per Batch
-  col8: { width: '8%', fontSize: 7 }, // Total Inventory
-  col9: { width: '8%', fontSize: 7 }, // Remaining
-  col10: { width: '10%', fontSize: 7 }, // Belt Numbers
-  col11: { width: '18%', fontSize: 7 }, // Raw Materials
+  col1: { width: '4%', fontSize: 7, textAlign: 'left' }, // S.No.
+  col2: { width: '10%', fontSize: 7, textAlign: 'left' }, // Compound Code
+  col3: { width: '12%', fontSize: 7, textAlign: 'left' }, // Compound Name
+  col4: { width: '8%', fontSize: 7, textAlign: 'left' }, // Produced On
+  col5: { width: '8%', fontSize: 7, textAlign: 'left' }, // Consumed On
+  col6: { width: '6%', fontSize: 7, textAlign: 'left' }, // Number of Batches
+  col7: { width: '8%', fontSize: 7, textAlign: 'left' }, // Weight per Batch
+  col8: { width: '8%', fontSize: 7, textAlign: 'left' }, // Total Inventory
+  col9: { width: '8%', fontSize: 7, textAlign: 'left' }, // Remaining
+  col10: { width: '10%', fontSize: 7, textAlign: 'left' }, // Belt Numbers
+  col11: { width: '9%', fontSize: 7, textAlign: 'left' }, // Material Name
+  col12: { width: '9%', fontSize: 7, textAlign: 'left' }, // Material Code
+  rawMaterialRow: {
+    flexDirection: 'row',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#e5e7eb',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    backgroundColor: '#fafafa',
+    alignItems: 'center',
+  },
+  emptyCell: { width: '4%', fontSize: 7, textAlign: 'left' },
+  emptyCell2: { width: '10%', fontSize: 7, textAlign: 'left' },
+  emptyCell3: { width: '12%', fontSize: 7, textAlign: 'left' },
+  emptyCell4: { width: '8%', fontSize: 7, textAlign: 'left' },
+  emptyCell5: { width: '8%', fontSize: 7, textAlign: 'left' },
+  emptyCell6: { width: '6%', fontSize: 7, textAlign: 'left' },
+  emptyCell7: { width: '8%', fontSize: 7, textAlign: 'left' },
+  emptyCell8: { width: '8%', fontSize: 7, textAlign: 'left' },
+  emptyCell9: { width: '8%', fontSize: 7, textAlign: 'left' },
+  emptyCell10: { width: '10%', fontSize: 7, textAlign: 'left' },
+  materialNameCell: { width: '9%', fontSize: 7, textAlign: 'left' },
+  materialCodeCell: { width: '9%', fontSize: 7, textAlign: 'left' },
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -129,30 +153,63 @@ const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> 
             <Text style={styles.col8}>Total Inventory (kg)</Text>
             <Text style={styles.col9}>Remaining (kg)</Text>
             <Text style={styles.col10}>Belt Numbers</Text>
-            <Text style={styles.col11}>Raw Materials</Text>
+            <Text style={styles.col11}>Material Name</Text>
+            <Text style={styles.col12}>Material Code</Text>
           </View>
 
           {data.map((row, index) => {
             // Create unique key from compoundCode and producedOn
             const uniqueKey = `${row.compoundCode}-${row.producedOn || row.consumedOn || index}`;
+
+            // Use materialsUsed if available (includes codes), otherwise fallback to rawMaterials
+            const materialsUsed = row.materialsUsed && row.materialsUsed.length > 0
+              ? row.materialsUsed
+              : (row.rawMaterials || []).map(name => ({ materialName: name, materialCode: '' }));
+
+            const hasMaterials = materialsUsed.length > 0;
+
             return (
-              <View key={uniqueKey} style={styles.tableRow}>
-                <Text style={styles.col1}>{index + 1}</Text>
-                <Text style={styles.col2}>{formatCompoundCode(row.compoundCode, row.producedOn)}</Text>
-                <Text style={styles.col3}>{row.compoundName}</Text>
-                <Text style={styles.col4}>{formatDate(row.producedOn)}</Text>
-                <Text style={styles.col5}>{formatDate(row.consumedOn)}</Text>
-                <Text style={styles.col6}>{row.numberOfBatches}</Text>
-                <Text style={styles.col7}>{roundToNearest5(row.weightPerBatch).toFixed(2)}</Text>
-                <Text style={styles.col8}>{roundToNearest5(row.totalInventory).toFixed(2)}</Text>
-                <Text style={styles.col9}>{roundToNearest5(row.remaining).toFixed(2)}</Text>
-                <Text style={styles.col10}>
-                  {row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A'}
-                </Text>
-                <Text style={styles.col11}>
-                  {row.rawMaterials && row.rawMaterials.length > 0 ? row.rawMaterials.join(', ') : 'N/A'}
-                </Text>
-              </View>
+              <React.Fragment key={uniqueKey}>
+                {/* Main compound row - show first material */}
+                <View style={styles.tableRow}>
+                  <Text style={styles.col1}>{index + 1}</Text>
+                  <Text style={styles.col2}>{formatCompoundCode(row.compoundCode, row.producedOn)}</Text>
+                  <Text style={styles.col3}>{row.compoundName}</Text>
+                  <Text style={styles.col4}>{formatDate(row.producedOn)}</Text>
+                  <Text style={styles.col5}>{formatDate(row.consumedOn)}</Text>
+                  <Text style={styles.col6}>{row.numberOfBatches}</Text>
+                  <Text style={styles.col7}>{roundToNearest5(row.weightPerBatch).toFixed(2)}</Text>
+                  <Text style={styles.col8}>{roundToNearest5(row.totalInventory).toFixed(2)}</Text>
+                  <Text style={styles.col9}>{roundToNearest5(row.remaining).toFixed(2)}</Text>
+                  <Text style={styles.col10}>
+                    {row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A'}
+                  </Text>
+                  <Text style={styles.col11}>
+                    {hasMaterials ? materialsUsed[0].materialName : 'N/A'}
+                  </Text>
+                  <Text style={styles.col12}>
+                    {hasMaterials && materialsUsed[0].materialCode ? materialsUsed[0].materialCode : 'N/A'}
+                  </Text>
+                </View>
+
+                {/* Raw materials rows - one per material (skip first as it's shown in main row) */}
+                {materialsUsed.slice(1).map((material, materialIndex) => (
+                  <View key={`${uniqueKey}-material-${materialIndex}`} style={styles.rawMaterialRow}>
+                    <Text style={styles.emptyCell}></Text>
+                    <Text style={styles.emptyCell2}></Text>
+                    <Text style={styles.emptyCell3}></Text>
+                    <Text style={styles.emptyCell4}></Text>
+                    <Text style={styles.emptyCell5}></Text>
+                    <Text style={styles.emptyCell6}></Text>
+                    <Text style={styles.emptyCell7}></Text>
+                    <Text style={styles.emptyCell8}></Text>
+                    <Text style={styles.emptyCell9}></Text>
+                    <Text style={styles.emptyCell10}></Text>
+                    <Text style={styles.materialNameCell}>{material.materialName}</Text>
+                    <Text style={styles.materialCodeCell}>{material.materialCode || 'N/A'}</Text>
+                  </View>
+                ))}
+              </React.Fragment>
             );
           })}
         </View>
@@ -206,20 +263,49 @@ export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = (
   const handleDownloadXLSX = () => {
     setIsGeneratingExcel(true);
     try {
-      // Prepare data for Excel
-      const excelData = data.map((row, index) => ({
-        'S.No.': index + 1,
-        'Compound Code': formatCompoundCode(row.compoundCode, row.producedOn),
-        'Compound Name': row.compoundName,
-        'Produced On': formatDate(row.producedOn),
-        'Consumed On': formatDate(row.consumedOn),
-        'Batches': row.numberOfBatches,
-        'Weight per Batch (kg)': roundToNearest5(row.weightPerBatch).toFixed(2),
-        'Total Inventory (kg)': roundToNearest5(row.totalInventory).toFixed(2),
-        'Remaining (kg)': roundToNearest5(row.remaining).toFixed(2),
-        'Belt Numbers': row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A',
-        'Raw Materials': row.rawMaterials && row.rawMaterials.length > 0 ? row.rawMaterials.join(', ') : 'N/A',
-      }));
+      // Prepare data for Excel - each raw material gets its own row
+      const excelData: Record<string, string | number>[] = [];
+
+      data.forEach((row, index) => {
+        // Use materialsUsed if available (includes codes), otherwise fallback to rawMaterials
+        const materialsUsed = row.materialsUsed && row.materialsUsed.length > 0
+          ? row.materialsUsed
+          : (row.rawMaterials || []).map(name => ({ materialName: name, materialCode: '' }));
+
+        // Main row with first raw material (or N/A if none)
+        excelData.push({
+          'S.No.': index + 1,
+          'Compound Code': formatCompoundCode(row.compoundCode, row.producedOn),
+          'Compound Name': row.compoundName,
+          'Produced On': formatDate(row.producedOn),
+          'Consumed On': formatDate(row.consumedOn),
+          'Batches': row.numberOfBatches,
+          'Weight per Batch (kg)': roundToNearest5(row.weightPerBatch).toFixed(2),
+          'Total Inventory (kg)': roundToNearest5(row.totalInventory).toFixed(2),
+          'Remaining (kg)': roundToNearest5(row.remaining).toFixed(2),
+          'Belt Numbers': row.beltNumbers.length > 0 ? row.beltNumbers.join(', ') : 'N/A',
+          'Material Name': materialsUsed.length > 0 ? materialsUsed[0].materialName : 'N/A',
+          'Material Code': materialsUsed.length > 0 && materialsUsed[0].materialCode ? materialsUsed[0].materialCode : 'N/A',
+        });
+
+        // Additional rows for remaining raw materials
+        materialsUsed.slice(1).forEach((material) => {
+          excelData.push({
+            'S.No.': '',
+            'Compound Code': '',
+            'Compound Name': '',
+            'Produced On': '',
+            'Consumed On': '',
+            'Batches': '',
+            'Weight per Batch (kg)': '',
+            'Total Inventory (kg)': '',
+            'Remaining (kg)': '',
+            'Belt Numbers': '',
+            'Material Name': material.materialName,
+            'Material Code': material.materialCode || 'N/A',
+          });
+        });
+      });
 
       // Create workbook and worksheet
       const wb = XLSX.utils.book_new();
@@ -237,7 +323,8 @@ export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = (
         { wch: 18 }, // Total Inventory
         { wch: 13 }, // Remaining
         { wch: 25 }, // Belt Numbers
-        { wch: 35 }, // Raw Materials
+        { wch: 20 }, // Material Name
+        { wch: 25 }, // Material Code
       ];
       ws['!cols'] = colWidths;
 

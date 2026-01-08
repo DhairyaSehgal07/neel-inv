@@ -17,15 +17,49 @@ interface EditRawMaterialDialogProps {
 }
 
 // Helper function to parse a date string (YYYY-MM-DD) as a local date (not UTC)
-function parseLocalDate(dateStr: string | Date): Date | undefined {
+function parseLocalDate(dateStr: string | Date | null | undefined): Date | undefined {
   if (dateStr instanceof Date) {
-    return dateStr;
+    // Validate the Date object
+    return isNaN(dateStr.getTime()) ? undefined : dateStr;
   }
-  if (!dateStr) return undefined;
+  if (!dateStr || typeof dateStr !== 'string') return undefined;
+
+  const trimmed = dateStr.trim();
+  if (!trimmed) return undefined;
+
   try {
-    const [year, month, day] = dateStr.split('-').map(Number);
+    // Check if it's in YYYY-MM-DD format
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!dateRegex.test(trimmed)) {
+      return undefined;
+    }
+
+    const [year, month, day] = trimmed.split('-').map(Number);
+
+    // Validate the numbers
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return undefined;
+    }
+
+    // Validate reasonable date ranges
+    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+      return undefined;
+    }
+
     // Create date in local timezone (month is 0-indexed in Date constructor)
-    return new Date(year, month - 1, day);
+    const date = new Date(year, month - 1, day);
+
+    // Validate the created date (check if it's a valid date)
+    if (isNaN(date.getTime())) {
+      return undefined;
+    }
+
+    // Double-check that the date components match (handles invalid dates like Feb 30)
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+      return undefined;
+    }
+
+    return date;
   } catch {
     return undefined;
   }

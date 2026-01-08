@@ -7,6 +7,11 @@ import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
 import { Permission } from '@/lib/rbac/permissions';
 
+interface MaterialUsed {
+  materialName: string;
+  materialCode: string;
+}
+
 interface CompoundMasterReportData {
   compoundCode: string;
   compoundName: string;
@@ -18,6 +23,7 @@ interface CompoundMasterReportData {
   remaining: number;
   beltNumbers: string[];
   rawMaterials: string[];
+  materialsUsed: MaterialUsed[];
 }
 
 async function getCompoundMasterReport() {
@@ -81,6 +87,9 @@ async function getCompoundMasterReport() {
       const compoundMasterIdStr = batch.compoundMasterId?.toString() || '';
       const rawMaterials = masterIdToRawMaterials.get(compoundMasterIdStr) || [];
 
+      // Extract materialsUsed from batch (includes material codes)
+      const materialsUsed = (batch.materialsUsed || []) as MaterialUsed[];
+
       return {
         compoundCode: batch.compoundCode,
         compoundName: batch.compoundName || '',
@@ -92,6 +101,7 @@ async function getCompoundMasterReport() {
         remaining: batch.inventoryRemaining || 0,
         beltNumbers: Array.from(beltNumbersForBatch).sort(),
         rawMaterials,
+        materialsUsed,
       };
     });
 
