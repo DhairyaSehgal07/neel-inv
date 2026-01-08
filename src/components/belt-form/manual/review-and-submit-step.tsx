@@ -81,8 +81,8 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
     // Prepare payload for API
     const payload = {
       formData,
-      coverConsumedKg: coverConsumed,
-      skimConsumedKg: skimConsumed,
+      coverBatches: coverBatches.map((b) => ({ batchId: b.batchId, consumedKg: b.consumedKg })),
+      skimBatches: skimBatches.map((b) => ({ batchId: b.batchId, consumedKg: b.consumedKg })),
     };
 
     // Call API using mutation
