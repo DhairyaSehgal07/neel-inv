@@ -1,5 +1,6 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
 import { getMaterialCodeDateRange } from '@/lib/helpers/compound-utils';
+import RawMaterial from '@/model/RawMaterial';
 
 export interface CompoundBatchDoc extends Document {
   compoundCode: string;
@@ -121,8 +122,6 @@ CompoundBatchSchema.pre('save', async function () {
         (!doc.materialsUsed || doc.materialsUsed.length === 0 || wasProductionDateJustSet);
 
       if (shouldPopulateMaterials) {
-        const RawMaterial = mongoose.model('RawMaterial');
-
         // Build materialsUsed array with assigned material codes
         const materialsUsed: MaterialUsed[] = [];
 
