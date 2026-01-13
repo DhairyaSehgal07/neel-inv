@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.24](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.23...v0.1.24) (2026-01-13)
+
+
+### Features
+
+* allow optional cover or skim compound in manual belt form ([348b222](https://github.com/DhairyaSehgal07/neel-inv/commit/348b222aeadd256069a500a273f1dd99c1c2069d))
+
+
+### Bug Fixes
+
+* import RawMaterial model to fix schema registration error ([8952e5c](https://github.com/DhairyaSehgal07/neel-inv/commit/8952e5c4aa7dbda5d2e3a7efa92294f0bc46cec7))
+* **manual-belt-form:** improve date handling and batch selection in compound info step ([58b6fce](https://github.com/DhairyaSehgal07/neel-inv/commit/58b6fce964981a9373354e4b4794c2895d86f5c1))
+* update payload to include batches instead of consumedKg values ([e5cc4b5](https://github.com/DhairyaSehgal07/neel-inv/commit/e5cc4b5821f471b65b2c65dfe1fa99d789216211))
+
 ### [0.1.23](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.22...v0.1.23) (2026-01-08)
 
 
