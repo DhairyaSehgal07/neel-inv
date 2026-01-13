@@ -89,7 +89,7 @@ export const ManualBeltForm = () => {
     <div className="space-y-4 max-w-2xl mx-auto p-4">
       <Card className="shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg">Create New Belt (Manual) </CardTitle>
+          <CardTitle className="text-lg">Create New Belt</CardTitle>
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

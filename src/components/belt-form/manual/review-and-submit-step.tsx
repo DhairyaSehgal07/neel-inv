@@ -31,7 +31,13 @@ const formatValue = (value: unknown): string => {
   return String(value);
 };
 
-export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, skimBatches }: ReviewAndSubmitStepProps) => {
+export const ReviewAndSubmitStep = ({
+  form,
+  onBack,
+  onSuccess,
+  coverBatches,
+  skimBatches,
+}: ReviewAndSubmitStepProps) => {
   const { getValues, setValue } = form;
   const createBeltMutation = useCreateManualBeltMutation();
 
@@ -44,19 +50,18 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
       return;
     }
 
-    const coverConsumed =
-      typeof formData.coverCompoundConsumed === 'number'
-        ? formData.coverCompoundConsumed
-        : typeof formData.coverCompoundConsumed === 'string'
-          ? parseFloat(formData.coverCompoundConsumed)
-          : 0;
+    // Properly parse consumption values - handle NaN
+    const parseConsumption = (value: unknown): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    };
 
-    const skimConsumed =
-      typeof formData.skimCompoundConsumed === 'number'
-        ? formData.skimCompoundConsumed
-        : typeof formData.skimCompoundConsumed === 'string'
-          ? parseFloat(formData.skimCompoundConsumed)
-          : 0;
+    const coverConsumed = parseConsumption(formData.coverCompoundConsumed);
+    const skimConsumed = parseConsumption(formData.skimCompoundConsumed);
 
     // At least one compound must be provided
     if (coverConsumed <= 0 && skimConsumed <= 0) {
@@ -269,7 +274,8 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
                   <ul className="list-disc list-inside mt-1">
                     {coverBatches.map((batch, idx) => (
                       <li key={idx} className="text-xs">
-                        {batch.batch.compoundName || batch.batch.compoundCode} - {batch.consumedKg.toFixed(2)} kg
+                        {batch.batch.compoundName || batch.batch.compoundCode} -{' '}
+                        {batch.consumedKg.toFixed(2)} kg
                       </li>
                     ))}
                   </ul>
@@ -281,7 +287,8 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
                   <ul className="list-disc list-inside mt-1">
                     {skimBatches.map((batch, idx) => (
                       <li key={idx} className="text-xs">
-                        {batch.batch.compoundName || batch.batch.compoundCode} - {batch.consumedKg.toFixed(2)} kg
+                        {batch.batch.compoundName || batch.batch.compoundCode} -{' '}
+                        {batch.consumedKg.toFixed(2)} kg
                       </li>
                     ))}
                   </ul>

@@ -16,7 +16,14 @@ import { BeltFormData } from '@/types/belt';
 import { useAvailableCompoundsQuery } from '@/services/api/queries/compounds/clientAvailableCompounds';
 import { CompoundBatchDoc } from '@/model/CompoundBatch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { X } from 'lucide-react';
@@ -45,7 +52,12 @@ const formatCompoundCode = (batch: CompoundBatchDoc): string => {
   return `${code}-${formattedDate}`;
 };
 
-export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: CompoundInfoStepProps) => {
+export const CompoundInfoStep = ({
+  form,
+  onNext,
+  onBack,
+  onBatchesChange,
+}: CompoundInfoStepProps) => {
   const { control, watch, setValue } = form;
   const { data: availableCompounds } = useAvailableCompoundsQuery();
 
@@ -58,12 +70,16 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
   // Filter and classify compounds as cover or skim
   const coverBatchesAvailable = useMemo(() => {
     if (!availableCompounds) return [];
-    return availableCompounds.filter((batch) => batch.coverCompoundProducedOn && batch.inventoryRemaining > 0);
+    return availableCompounds.filter(
+      (batch) => batch.coverCompoundProducedOn && batch.inventoryRemaining > 0
+    );
   }, [availableCompounds]);
 
   const skimBatchesAvailable = useMemo(() => {
     if (!availableCompounds) return [];
-    return availableCompounds.filter((batch) => batch.skimCompoundProducedOn && batch.inventoryRemaining > 0);
+    return availableCompounds.filter(
+      (batch) => batch.skimCompoundProducedOn && batch.inventoryRemaining > 0
+    );
   }, [availableCompounds]);
 
   const handleCoverBatchToggle = (batch: CompoundBatchDoc, checked: boolean) => {
@@ -73,8 +89,23 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
       if (batch.compoundName && !watch('coverCompoundType')) {
         setValue('coverCompoundType', batch.compoundName);
       }
+      // Auto-set cover compound produced on date from batch
+      if (batch.coverCompoundProducedOn) {
+        const date = new Date(batch.coverCompoundProducedOn + 'T00:00:00');
+        setValue('coverCompoundProducedOn', date);
+      }
     } else {
-      setCoverBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
+      setCoverBatches((prev) => {
+        const updated = prev.filter((b) => b.batchId !== batch._id.toString());
+        // If no batches remain, clear the date; otherwise keep the first batch's date
+        if (updated.length === 0) {
+          setValue('coverCompoundProducedOn', undefined);
+        } else if (updated[0]?.batch.coverCompoundProducedOn) {
+          const date = new Date(updated[0].batch.coverCompoundProducedOn + 'T00:00:00');
+          setValue('coverCompoundProducedOn', date);
+        }
+        return updated;
+      });
     }
   };
 
@@ -85,8 +116,23 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
       if (batch.compoundName && !watch('skimCompoundType')) {
         setValue('skimCompoundType', batch.compoundName);
       }
+      // Auto-set skim compound produced on date from batch
+      if (batch.skimCompoundProducedOn) {
+        const date = new Date(batch.skimCompoundProducedOn + 'T00:00:00');
+        setValue('skimCompoundProducedOn', date);
+      }
     } else {
-      setSkimBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
+      setSkimBatches((prev) => {
+        const updated = prev.filter((b) => b.batchId !== batch._id.toString());
+        // If no batches remain, clear the date; otherwise keep the first batch's date
+        if (updated.length === 0) {
+          setValue('skimCompoundProducedOn', undefined);
+        } else if (updated[0]?.batch.skimCompoundProducedOn) {
+          const date = new Date(updated[0].batch.skimCompoundProducedOn + 'T00:00:00');
+          setValue('skimCompoundProducedOn', date);
+        }
+        return updated;
+      });
     }
   };
 
@@ -116,20 +162,18 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
   const totalSkimConsumed = skimBatches.reduce((sum, b) => sum + b.consumedKg, 0);
 
   const handleNext = () => {
-    // Validate total consumption
-    const coverConsumed =
-      typeof coverCompoundConsumed === 'number'
-        ? coverCompoundConsumed
-        : typeof coverCompoundConsumed === 'string'
-          ? parseFloat(coverCompoundConsumed)
-          : 0;
+    // Validate total consumption - properly handle NaN values
+    const parseConsumption = (value: unknown): number => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'string') {
+        const parsed = parseFloat(value);
+        return isNaN(parsed) ? 0 : parsed;
+      }
+      return 0;
+    };
 
-    const skimConsumed =
-      typeof skimCompoundConsumed === 'number'
-        ? skimCompoundConsumed
-        : typeof skimCompoundConsumed === 'string'
-          ? parseFloat(skimCompoundConsumed)
-          : 0;
+    const coverConsumed = parseConsumption(coverCompoundConsumed);
+    const skimConsumed = parseConsumption(skimCompoundConsumed);
 
     // At least one compound must be provided
     if (coverConsumed <= 0 && skimConsumed <= 0) {
@@ -147,7 +191,9 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
       // Validate that all selected cover batches have consumption values
       for (const batch of coverBatches) {
         if (batch.consumedKg <= 0) {
-          toast.error(`Please enter consumption amount for cover batch ${formatCompoundCode(batch.batch)}`);
+          toast.error(
+            `Please enter consumption amount for cover batch ${formatCompoundCode(batch.batch)}`
+          );
           return;
         }
         if (batch.consumedKg > batch.batch.inventoryRemaining) {
@@ -182,7 +228,9 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
       // Validate that all selected skim batches have consumption values
       for (const batch of skimBatches) {
         if (batch.consumedKg <= 0) {
-          toast.error(`Please enter consumption amount for skim batch ${formatCompoundCode(batch.batch)}`);
+          toast.error(
+            `Please enter consumption amount for skim batch ${formatCompoundCode(batch.batch)}`
+          );
           return;
         }
         if (batch.consumedKg > batch.batch.inventoryRemaining) {
@@ -265,13 +313,17 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
                 <TableBody>
                   {coverBatchesAvailable.map((batch) => {
                     const isSelected = coverBatches.some((b) => b.batchId === batch._id.toString());
-                    const selectedBatch = coverBatches.find((b) => b.batchId === batch._id.toString());
+                    const selectedBatch = coverBatches.find(
+                      (b) => b.batchId === batch._id.toString()
+                    );
                     return (
                       <TableRow key={batch._id.toString()}>
                         <TableCell>
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={(checked) => handleCoverBatchToggle(batch, checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              handleCoverBatchToggle(batch, checked as boolean)
+                            }
                           />
                         </TableCell>
                         <TableCell>{batch.compoundName || batch.compoundCode}</TableCell>
@@ -285,7 +337,9 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
                               min="0"
                               max={batch.inventoryRemaining}
                               value={selectedBatch?.consumedKg || 0}
-                              onChange={(e) => handleCoverConsumedChange(batch._id.toString(), e.target.value)}
+                              onChange={(e) =>
+                                handleCoverConsumedChange(batch._id.toString(), e.target.value)
+                              }
                               className="w-24"
                             />
                           )}
@@ -300,9 +354,13 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
               <div className="space-y-2">
                 <div className="text-sm font-medium">Selected Batches:</div>
                 {coverBatches.map((selected) => (
-                  <div key={selected.batchId} className="flex items-center justify-between text-sm border p-2 rounded">
+                  <div
+                    key={selected.batchId}
+                    className="flex items-center justify-between text-sm border p-2 rounded"
+                  >
                     <span>
-                      {selected.batch.compoundName || selected.batch.compoundCode} - {selected.consumedKg.toFixed(2)} kg
+                      {selected.batch.compoundName || selected.batch.compoundCode} -{' '}
+                      {selected.consumedKg.toFixed(2)} kg
                     </span>
                     <Button
                       type="button"
@@ -368,13 +426,17 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
                 <TableBody>
                   {skimBatchesAvailable.map((batch) => {
                     const isSelected = skimBatches.some((b) => b.batchId === batch._id.toString());
-                    const selectedBatch = skimBatches.find((b) => b.batchId === batch._id.toString());
+                    const selectedBatch = skimBatches.find(
+                      (b) => b.batchId === batch._id.toString()
+                    );
                     return (
                       <TableRow key={batch._id.toString()}>
                         <TableCell>
                           <Checkbox
                             checked={isSelected}
-                            onCheckedChange={(checked) => handleSkimBatchToggle(batch, checked as boolean)}
+                            onCheckedChange={(checked) =>
+                              handleSkimBatchToggle(batch, checked as boolean)
+                            }
                           />
                         </TableCell>
                         <TableCell>{batch.compoundName || batch.compoundCode}</TableCell>
@@ -388,7 +450,9 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
                               min="0"
                               max={batch.inventoryRemaining}
                               value={selectedBatch?.consumedKg || 0}
-                              onChange={(e) => handleSkimConsumedChange(batch._id.toString(), e.target.value)}
+                              onChange={(e) =>
+                                handleSkimConsumedChange(batch._id.toString(), e.target.value)
+                              }
                               className="w-24"
                             />
                           )}
@@ -403,9 +467,13 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
               <div className="space-y-2">
                 <div className="text-sm font-medium">Selected Batches:</div>
                 {skimBatches.map((selected) => (
-                  <div key={selected.batchId} className="flex items-center justify-between text-sm border p-2 rounded">
+                  <div
+                    key={selected.batchId}
+                    className="flex items-center justify-between text-sm border p-2 rounded"
+                  >
                     <span>
-                      {selected.batch.compoundName || selected.batch.compoundCode} - {selected.consumedKg.toFixed(2)} kg
+                      {selected.batch.compoundName || selected.batch.compoundCode} -{' '}
+                      {selected.consumedKg.toFixed(2)} kg
                     </span>
                     <Button
                       type="button"
