@@ -32,7 +32,7 @@ const formatValue = (value: unknown): string => {
 };
 
 export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, skimBatches }: ReviewAndSubmitStepProps) => {
-  const { getValues } = form;
+  const { getValues, setValue } = form;
   const createBeltMutation = useCreateManualBeltMutation();
 
   const formData = getValues();
@@ -41,16 +41,6 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
     // Validate required fields
     if (!formData.beltNumber) {
       toast.error('Belt number is required');
-      return;
-    }
-
-    if (!formData.coverCompoundType) {
-      toast.error('Cover compound type is required');
-      return;
-    }
-
-    if (!formData.skimCompoundType) {
-      toast.error('Skim compound type is required');
       return;
     }
 
@@ -68,19 +58,48 @@ export const ReviewAndSubmitStep = ({ form, onBack, onSuccess, coverBatches, ski
           ? parseFloat(formData.skimCompoundConsumed)
           : 0;
 
-    if (coverConsumed <= 0) {
-      toast.error('Cover compound consumed must be greater than 0');
+    // At least one compound must be provided
+    if (coverConsumed <= 0 && skimConsumed <= 0) {
+      toast.error('Please provide at least one compound (cover or skim)');
       return;
     }
 
-    if (skimConsumed <= 0) {
-      toast.error('Skim compound consumed must be greater than 0');
+    // Derive compound type from batches if not set
+    const finalFormData = { ...formData };
+
+    // Auto-set cover compound type from batches if not set
+    if (coverConsumed > 0 && !finalFormData.coverCompoundType && coverBatches.length > 0) {
+      const firstBatch = coverBatches[0];
+      if (firstBatch.batch.compoundName) {
+        finalFormData.coverCompoundType = firstBatch.batch.compoundName;
+        setValue('coverCompoundType', firstBatch.batch.compoundName);
+      }
+    }
+
+    // Auto-set skim compound type from batches if not set
+    if (skimConsumed > 0 && !finalFormData.skimCompoundType && skimBatches.length > 0) {
+      const firstBatch = skimBatches[0];
+      if (firstBatch.batch.compoundName) {
+        finalFormData.skimCompoundType = firstBatch.batch.compoundName;
+        setValue('skimCompoundType', firstBatch.batch.compoundName);
+      }
+    }
+
+    // Validate cover compound type if cover is provided
+    if (coverConsumed > 0 && !finalFormData.coverCompoundType) {
+      toast.error('Cover compound type is required when cover compound is provided');
+      return;
+    }
+
+    // Validate skim compound type if skim is provided
+    if (skimConsumed > 0 && !finalFormData.skimCompoundType) {
+      toast.error('Skim compound type is required when skim compound is provided');
       return;
     }
 
     // Prepare payload for API
     const payload = {
-      formData,
+      formData: finalFormData,
       coverBatches: coverBatches.map((b) => ({ batchId: b.batchId, consumedKg: b.consumedKg })),
       skimBatches: skimBatches.map((b) => ({ batchId: b.batchId, consumedKg: b.consumedKg })),
     };

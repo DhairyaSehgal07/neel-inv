@@ -46,7 +46,7 @@ const formatCompoundCode = (batch: CompoundBatchDoc): string => {
 };
 
 export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: CompoundInfoStepProps) => {
-  const { control, watch } = form;
+  const { control, watch, setValue } = form;
   const { data: availableCompounds } = useAvailableCompoundsQuery();
 
   const [coverBatches, setCoverBatches] = useState<SelectedBatch[]>([]);
@@ -69,6 +69,10 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
   const handleCoverBatchToggle = (batch: CompoundBatchDoc, checked: boolean) => {
     if (checked) {
       setCoverBatches((prev) => [...prev, { batchId: batch._id.toString(), batch, consumedKg: 0 }]);
+      // Auto-set compound type from batch if not already set
+      if (batch.compoundName && !watch('coverCompoundType')) {
+        setValue('coverCompoundType', batch.compoundName);
+      }
     } else {
       setCoverBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
     }
@@ -77,6 +81,10 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
   const handleSkimBatchToggle = (batch: CompoundBatchDoc, checked: boolean) => {
     if (checked) {
       setSkimBatches((prev) => [...prev, { batchId: batch._id.toString(), batch, consumedKg: 0 }]);
+      // Auto-set compound type from batch if not already set
+      if (batch.compoundName && !watch('skimCompoundType')) {
+        setValue('skimCompoundType', batch.compoundName);
+      }
     } else {
       setSkimBatches((prev) => prev.filter((b) => b.batchId !== batch._id.toString()));
     }
@@ -123,66 +131,80 @@ export const CompoundInfoStep = ({ form, onNext, onBack, onBatchesChange }: Comp
           ? parseFloat(skimCompoundConsumed)
           : 0;
 
-    if (coverConsumed <= 0) {
-      toast.error('Cover compound consumed must be greater than 0');
+    // At least one compound must be provided
+    if (coverConsumed <= 0 && skimConsumed <= 0) {
+      toast.error('Please provide at least one compound (cover or skim)');
       return;
     }
 
-    if (skimConsumed <= 0) {
-      toast.error('Skim compound consumed must be greater than 0');
-      return;
-    }
-
-    if (coverBatches.length === 0) {
-      toast.error('Please select at least one cover compound batch');
-      return;
-    }
-
-    if (skimBatches.length === 0) {
-      toast.error('Please select at least one skim compound batch');
-      return;
-    }
-
-    // Validate that all selected batches have consumption values
-    for (const batch of coverBatches) {
-      if (batch.consumedKg <= 0) {
-        toast.error(`Please enter consumption amount for cover batch ${formatCompoundCode(batch.batch)}`);
+    // Validate cover compound if provided
+    if (coverConsumed > 0) {
+      if (coverBatches.length === 0) {
+        toast.error('Please select at least one cover compound batch');
         return;
       }
-      if (batch.consumedKg > batch.batch.inventoryRemaining) {
+
+      // Validate that all selected cover batches have consumption values
+      for (const batch of coverBatches) {
+        if (batch.consumedKg <= 0) {
+          toast.error(`Please enter consumption amount for cover batch ${formatCompoundCode(batch.batch)}`);
+          return;
+        }
+        if (batch.consumedKg > batch.batch.inventoryRemaining) {
+          toast.error(
+            `Cover batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+          );
+          return;
+        }
+      }
+
+      // Validate cover totals match
+      if (Math.abs(totalCoverConsumed - coverConsumed) > 0.01) {
         toast.error(
-          `Cover batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+          `Cover compound consumption mismatch. Total from batches: ${totalCoverConsumed.toFixed(2)} kg, but form shows: ${coverConsumed} kg`
         );
         return;
       }
+    } else {
+      // If cover is not provided, clear cover batches
+      if (coverBatches.length > 0) {
+        setCoverBatches([]);
+      }
     }
 
-    for (const batch of skimBatches) {
-      if (batch.consumedKg <= 0) {
-        toast.error(`Please enter consumption amount for skim batch ${formatCompoundCode(batch.batch)}`);
+    // Validate skim compound if provided
+    if (skimConsumed > 0) {
+      if (skimBatches.length === 0) {
+        toast.error('Please select at least one skim compound batch');
         return;
       }
-      if (batch.consumedKg > batch.batch.inventoryRemaining) {
+
+      // Validate that all selected skim batches have consumption values
+      for (const batch of skimBatches) {
+        if (batch.consumedKg <= 0) {
+          toast.error(`Please enter consumption amount for skim batch ${formatCompoundCode(batch.batch)}`);
+          return;
+        }
+        if (batch.consumedKg > batch.batch.inventoryRemaining) {
+          toast.error(
+            `Skim batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+          );
+          return;
+        }
+      }
+
+      // Validate skim totals match
+      if (Math.abs(totalSkimConsumed - skimConsumed) > 0.01) {
         toast.error(
-          `Skim batch ${formatCompoundCode(batch.batch)} only has ${batch.batch.inventoryRemaining} kg remaining, but ${batch.consumedKg} kg is required`
+          `Skim compound consumption mismatch. Total from batches: ${totalSkimConsumed.toFixed(2)} kg, but form shows: ${skimConsumed} kg`
         );
         return;
       }
-    }
-
-    // Validate totals match
-    if (Math.abs(totalCoverConsumed - coverConsumed) > 0.01) {
-      toast.error(
-        `Cover compound consumption mismatch. Total from batches: ${totalCoverConsumed.toFixed(2)} kg, but form shows: ${coverConsumed} kg`
-      );
-      return;
-    }
-
-    if (Math.abs(totalSkimConsumed - skimConsumed) > 0.01) {
-      toast.error(
-        `Skim compound consumption mismatch. Total from batches: ${totalSkimConsumed.toFixed(2)} kg, but form shows: ${skimConsumed} kg`
-      );
-      return;
+    } else {
+      // If skim is not provided, clear skim batches
+      if (skimBatches.length > 0) {
+        setSkimBatches([]);
+      }
     }
 
     // Store selected batches via callback

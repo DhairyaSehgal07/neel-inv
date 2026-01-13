@@ -92,8 +92,10 @@ export const createBeltRequestSchema = z.object({
     coverCompoundProducedOn: z.union([z.date(), z.string()]).optional(),
     skimCompoundProducedOn: z.union([z.date(), z.string()]).optional(),
   }),
-  coverConsumedKg: z.number(),
-  skimConsumedKg: z.number(),
+  coverBatches: z.array(batchUsageSchema).optional(),
+  skimBatches: z.array(batchUsageSchema).optional(),
+  coverConsumedKg: z.number().optional(),
+  skimConsumedKg: z.number().optional(),
   coverCompoundCode: z.string().optional(),
   skimCompoundCode: z.string().optional(),
 });

@@ -307,20 +307,7 @@ export async function createManualBelt(
   payload: CreateManualBeltPayload,
   session?: ClientSession
 ): Promise<BeltDoc> {
-  const { formData, coverBatches, skimBatches } = payload;
-
-  // Validate that batches are provided
-  if (!coverBatches || coverBatches.length === 0) {
-    throw new Error('At least one cover compound batch is required');
-  }
-
-  if (!skimBatches || skimBatches.length === 0) {
-    throw new Error('At least one skim compound batch is required');
-  }
-
-  // Validate total consumption matches
-  const totalCoverConsumed = coverBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
-  const totalSkimConsumed = skimBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
+  const { formData, coverBatches = [], skimBatches = [] } = payload;
 
   const coverConsumedKg =
     typeof formData.coverCompoundConsumed === 'number'
@@ -336,16 +323,37 @@ export async function createManualBelt(
         ? parseFloat(formData.skimCompoundConsumed)
         : 0;
 
-  if (Math.abs(totalCoverConsumed - coverConsumedKg) > 0.01) {
-    throw new Error(
-      `Cover compound consumption mismatch. Form shows ${coverConsumedKg} kg but selected batches total ${totalCoverConsumed} kg.`
-    );
+  // At least one compound must be provided
+  if (coverConsumedKg <= 0 && skimConsumedKg <= 0) {
+    throw new Error('At least one compound (cover or skim) must be provided');
   }
 
-  if (Math.abs(totalSkimConsumed - skimConsumedKg) > 0.01) {
-    throw new Error(
-      `Skim compound consumption mismatch. Form shows ${skimConsumedKg} kg but selected batches total ${totalSkimConsumed} kg.`
-    );
+  // Validate cover compound if provided
+  if (coverConsumedKg > 0) {
+    if (!coverBatches || coverBatches.length === 0) {
+      throw new Error('At least one cover compound batch is required when cover compound is provided');
+    }
+
+    const totalCoverConsumed = coverBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
+    if (Math.abs(totalCoverConsumed - coverConsumedKg) > 0.01) {
+      throw new Error(
+        `Cover compound consumption mismatch. Form shows ${coverConsumedKg} kg but selected batches total ${totalCoverConsumed} kg.`
+      );
+    }
+  }
+
+  // Validate skim compound if provided
+  if (skimConsumedKg > 0) {
+    if (!skimBatches || skimBatches.length === 0) {
+      throw new Error('At least one skim compound batch is required when skim compound is provided');
+    }
+
+    const totalSkimConsumed = skimBatches.reduce((sum, batch) => sum + batch.consumedKg, 0);
+    if (Math.abs(totalSkimConsumed - skimConsumedKg) > 0.01) {
+      throw new Error(
+        `Skim compound consumption mismatch. Form shows ${skimConsumedKg} kg but selected batches total ${totalSkimConsumed} kg.`
+      );
+    }
   }
 
   // Parse fabric consumed (can be number or string)
@@ -369,11 +377,15 @@ export async function createManualBelt(
     session
   );
 
-  // Consume from selected cover batches
-  const coverUsage = await consumeFromSelectedBatches(coverBatches, session);
+  // Consume from selected cover batches (only if provided)
+  const coverUsage = coverBatches.length > 0
+    ? await consumeFromSelectedBatches(coverBatches, session)
+    : { batchesUsed: [], totalConsumed: 0 };
 
-  // Consume from selected skim batches
-  const skimUsage = await consumeFromSelectedBatches(skimBatches, session);
+  // Consume from selected skim batches (only if provided)
+  const skimUsage = skimBatches.length > 0
+    ? await consumeFromSelectedBatches(skimBatches, session)
+    : { batchesUsed: [], totalConsumed: 0 };
 
   // Helper function to parse number from string or number
   const parseNumber = (value: number | string | undefined): number | undefined => {
