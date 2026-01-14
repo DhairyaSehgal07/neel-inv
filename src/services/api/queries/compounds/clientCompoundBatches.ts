@@ -45,9 +45,9 @@ export function useCompoundBatchesQuery(params?: FetchCompoundBatchesParams) {
 interface UpdateCompoundBatchPayload {
   compoundCode?: string;
   compoundName?: string;
-  date?: string;
   batches?: number;
   weightPerBatch?: number;
+  reducedQty?: number;
 }
 
 async function updateCompoundBatchClient(
@@ -75,7 +75,6 @@ export function useUpdateCompoundBatchMutation() {
 interface CreateCompoundBatchPayload {
   compoundCode: string;
   compoundName?: string;
-  date: string;
   batches: number;
   weightPerBatch: number;
   coverCompoundProducedOn?: string;

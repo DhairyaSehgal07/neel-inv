@@ -48,11 +48,6 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
       return;
     }
 
-    if (!formData.date?.trim()) {
-      toast.error('Please enter a date');
-      return;
-    }
-
     const batches = parseFloat(formData.batches);
     if (isNaN(batches) || batches <= 0) {
       toast.error('Please enter a valid number of batches (must be greater than 0)');
@@ -98,7 +93,6 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
         payload: {
           compoundCode: formData.compoundCode,
           compoundName: formData.compoundName,
-          date: formData.date,
           batches,
           weightPerBatch,
           ...(reducedQty !== undefined && { reducedQty }),

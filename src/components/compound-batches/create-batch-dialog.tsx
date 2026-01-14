@@ -102,15 +102,10 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
       return;
     }
 
-    // Auto-generate date as today's date in YYYY-MM-DD format
-    const today = new Date();
-    const date = today.toISOString().split('T')[0];
-
     try {
       await createMutation.mutateAsync({
         compoundCode: formData.compoundCode,
         compoundName: formData.compoundName || undefined,
-        date,
         batches,
         weightPerBatch,
         coverCompoundProducedOn: formData.coverCompoundProducedOn || undefined,

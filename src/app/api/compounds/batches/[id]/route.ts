@@ -69,7 +69,9 @@ async function updateCompoundBatchHandler(
       updateData.compoundName = body.compoundName;
     }
 
-    if (body.date !== undefined) {
+    // Date should not be updated - it represents when the compound was consumed
+    // Only validate if explicitly provided (shouldn't happen in normal flow)
+    if (body.date !== undefined && body.date !== null && body.date !== '') {
       // Check if date is being changed and if it already exists
       if (body.date !== existingBatch.date) {
         const batchWithSameDate = await CompoundBatch.findOne({
@@ -79,13 +81,14 @@ async function updateCompoundBatchHandler(
         if (batchWithSameDate) {
           const response: ApiResponse = {
             success: false,
-            message: 'A batch with this date already exists',
+            message: `A batch already exists for date ${body.date}`,
           };
           return NextResponse.json(response, { status: 400 });
         }
       }
       updateData.date = body.date;
     }
+    // If date is not provided, we don't update it (preserve existing date)
 
     if (body.batches !== undefined) {
       const batches = typeof body.batches === 'number' ? body.batches : parseFloat(body.batches);
@@ -243,10 +246,11 @@ async function updateCompoundBatchHandler(
     console.error('Error updating compound batch:', error);
 
     // Handle duplicate key errors (MongoDB duplicate key error)
+    // This should not occur if date is not being updated, but handle it gracefully
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
       const response: ApiResponse = {
         success: false,
-        message: 'A batch with this date already exists',
+        message: 'A batch with this date already exists. Date cannot be changed as it represents when the compound was consumed.',
       };
       return NextResponse.json(response, { status: 400 });
     }
