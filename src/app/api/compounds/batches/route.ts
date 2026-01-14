@@ -6,7 +6,6 @@ import CompoundHistory from '@/model/CompoundHistory';
 import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
 import { Permission } from '@/lib/rbac/permissions';
-import { addDaysToDate } from '@/lib/helpers/compound-utils';
 
 async function getCompoundBatches(request: NextRequest) {
   try {
@@ -71,32 +70,10 @@ async function createCompoundBatch(request: NextRequest) {
       return NextResponse.json(response, { status: 400 });
     }
 
-    // Find the next available date (starting from today)
-    // Date represents when the compound was consumed (created)
-    // Since date must be unique, we find the next available date
-    const today = new Date();
-    let candidateDate = today.toISOString().split('T')[0];
-    let attempts = 0;
-    const maxAttempts = 365; // Prevent infinite loop
-
-    while (attempts < maxAttempts) {
-      const existingBatch = await CompoundBatch.findOne({ date: candidateDate });
-      if (!existingBatch) {
-        break; // Found an available date
-      }
-      candidateDate = addDaysToDate(candidateDate, 1);
-      attempts++;
-    }
-
-    if (attempts >= maxAttempts) {
-      const response: ApiResponse = {
-        success: false,
-        message: 'Could not find an available date within reasonable range',
-      };
-      return NextResponse.json(response, { status: 400 });
-    }
-
-    const date = candidateDate;
+    // Date represents when the compound was consumed
+    // When creating a new batch, the compound is just produced and not consumed yet
+    // So we set date to empty string - it will be set when the compound is actually consumed
+    const date = '';
 
     // Validate numeric fields
     const batchesNum = Number(batches);
