@@ -4,7 +4,7 @@ export interface CompoundHistoryDoc extends Document {
   batchId: mongoose.Types.ObjectId; // ref CompoundBatch
   compoundCode: string;
   compoundName: string;
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD - empty string if not yet consumed
   batches: number;
   weightPerBatch: number;
   totalInventory: number;
@@ -19,7 +19,7 @@ const CompoundHistorySchema = new Schema<CompoundHistoryDoc>(
     batchId: { type: Schema.Types.ObjectId, required: true, ref: 'CompoundBatch' },
     compoundCode: { type: String, required: true },
     compoundName: { type: String },
-    date: { type: String, required: true },
+    date: { type: String, default: '', required: false },
     batches: { type: Number, required: true },
     weightPerBatch: { type: Number, required: true },
     totalInventory: { type: Number, required: true },

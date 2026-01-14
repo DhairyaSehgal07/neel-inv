@@ -73,7 +73,7 @@ async function createCompoundBatch(request: NextRequest) {
     // Date represents when the compound was consumed
     // When creating a new batch, the compound is just produced and not consumed yet
     // So we set date to empty string - it will be set when the compound is actually consumed
-    const date = '';
+    const date: string = '';
 
     // Validate numeric fields
     const batchesNum = Number(batches);
@@ -176,7 +176,8 @@ async function createCompoundBatch(request: NextRequest) {
       batchId: batch._id,
       compoundCode,
       compoundName: batch.compoundName,
-      date,
+      // Only include date if it's not empty, otherwise let default handle it
+      ...(date && date.length > 0 ? { date } : {}),
       batches: batchesNum,
       weightPerBatch: weightPerBatchNum,
       totalInventory,
@@ -203,6 +204,23 @@ async function createCompoundBatch(request: NextRequest) {
       const response: ApiResponse = {
         success: false,
         message: 'A batch with this date or production date already exists. Please try again.',
+      };
+      return NextResponse.json(response, { status: 400 });
+    }
+
+    // Handle validation errors (e.g., from CompoundHistory)
+    if (error && typeof error === 'object' && 'name' in error && error.name === 'ValidationError') {
+      const validationError = error as { errors?: Record<string, { message?: string }>; message?: string };
+      const errorMessages = validationError.errors
+        ? Object.values(validationError.errors)
+            .map((err) => err.message)
+            .filter(Boolean)
+            .join(', ')
+        : validationError.message || 'Validation failed';
+
+      const response: ApiResponse = {
+        success: false,
+        message: errorMessages,
       };
       return NextResponse.json(response, { status: 400 });
     }
