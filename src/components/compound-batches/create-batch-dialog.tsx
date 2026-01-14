@@ -115,6 +115,7 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
       toast.success('Compound batch created successfully');
       onOpenChange(false);
     } catch (err) {
+      // Don't close dialog on error - let user see the error and fix the issue
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       toast.error(`Failed to create compound batch: ${errorMessage}`);
     }

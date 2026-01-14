@@ -246,11 +246,11 @@ async function updateCompoundBatchHandler(
     console.error('Error updating compound batch:', error);
 
     // Handle duplicate key errors (MongoDB duplicate key error)
-    // This should not occur if date is not being updated, but handle it gracefully
+    // This can happen if there's a race condition or unique constraint violation
     if (error && typeof error === 'object' && 'code' in error && error.code === 11000) {
       const response: ApiResponse = {
         success: false,
-        message: 'A batch with this date already exists. Date cannot be changed as it represents when the compound was consumed.',
+        message: 'A batch with this date or production date already exists. Please try again.',
       };
       return NextResponse.json(response, { status: 400 });
     }

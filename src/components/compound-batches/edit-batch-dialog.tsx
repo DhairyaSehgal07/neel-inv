@@ -101,6 +101,7 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
       toast.success('Compound batch updated successfully');
       onOpenChange(false);
     } catch (err) {
+      // Don't close dialog on error - let user see the error and fix the issue
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       toast.error(`Failed to update compound batch: ${errorMessage}`);
     }

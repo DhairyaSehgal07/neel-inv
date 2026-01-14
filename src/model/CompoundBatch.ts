@@ -39,7 +39,7 @@ const CompoundBatchSchema = new Schema(
   {
     compoundCode: { type: String, required: true },
     compoundName: { type: String },
-    date: { type: String, required: true },
+    date: { type: String, default: '' },
     batches: { type: Number, required: true },
     weightPerBatch: { type: Number, required: true },
     totalInventory: { type: Number, required: true },
