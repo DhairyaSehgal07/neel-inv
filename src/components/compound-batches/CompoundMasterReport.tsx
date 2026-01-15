@@ -125,12 +125,24 @@ const formatCompoundCode = (code: string, producedOn: string | null): string => 
   return `${code}-${formattedDate}`;
 };
 
+// Helper function to sort data by producedOn date in descending order
+const sortByProducedOn = (data: CompoundMasterReportData[]): CompoundMasterReportData[] => {
+  return [...data].sort((a, b) => {
+    const dateA = a.producedOn ? new Date(a.producedOn).getTime() : 0;
+    const dateB = b.producedOn ? new Date(b.producedOn).getTime() : 0;
+    return dateB - dateA; // Descending order (newest first)
+  });
+};
+
 const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> = ({ data }) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  // Sort data by producedOn in descending order
+  const sortedData = sortByProducedOn(data);
 
   return (
     <Document>
@@ -157,7 +169,7 @@ const CompoundMasterPDFDocument: React.FC<{ data: CompoundMasterReportData[] }> 
             <Text style={styles.col12}>Material Code</Text>
           </View>
 
-          {data.map((row, index) => {
+          {sortedData.map((row, index) => {
             // Create unique key from compoundCode and producedOn
             const uniqueKey = `${row.compoundCode}-${row.producedOn || row.consumedOn || index}`;
 
@@ -263,10 +275,13 @@ export const CompoundMasterReportButton: React.FC<CompoundMasterReportProps> = (
   const handleDownloadXLSX = () => {
     setIsGeneratingExcel(true);
     try {
+      // Sort data by producedOn in descending order
+      const sortedData = sortByProducedOn(data);
+
       // Prepare data for Excel - each raw material gets its own row
       const excelData: Record<string, string | number>[] = [];
 
-      data.forEach((row, index) => {
+      sortedData.forEach((row, index) => {
         // Use materialsUsed if available (includes codes), otherwise fallback to rawMaterials
         const materialsUsed = row.materialsUsed && row.materialsUsed.length > 0
           ? row.materialsUsed

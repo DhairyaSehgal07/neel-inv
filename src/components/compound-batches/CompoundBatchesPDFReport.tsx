@@ -106,12 +106,31 @@ const formatDate = (date: string | undefined): string => {
   return dateObj.toLocaleDateString();
 };
 
+// Helper function to get the latest produced on date from a batch
+const getLatestProducedOnDate = (batch: CompoundBatchDoc): number => {
+  const coverDate = batch.coverCompoundProducedOn ? new Date(batch.coverCompoundProducedOn).getTime() : 0;
+  const skimDate = batch.skimCompoundProducedOn ? new Date(batch.skimCompoundProducedOn).getTime() : 0;
+  return Math.max(coverDate, skimDate);
+};
+
+// Helper function to sort batches by produced on date in descending order
+const sortBatchesByProducedOn = (batches: CompoundBatchDoc[]): CompoundBatchDoc[] => {
+  return [...batches].sort((a, b) => {
+    const dateA = getLatestProducedOnDate(a);
+    const dateB = getLatestProducedOnDate(b);
+    return dateB - dateA; // Descending order (newest first)
+  });
+};
+
 const CompoundBatchesPDFDocument: React.FC<{ batches: CompoundBatchDoc[] }> = ({ batches }) => {
   const currentDate = new Date().toLocaleDateString('en-IN', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+
+  // Sort batches by produced on date in descending order
+  const sortedBatches = sortBatchesByProducedOn(batches);
 
   return (
     <Document>
@@ -135,7 +154,7 @@ const CompoundBatchesPDFDocument: React.FC<{ batches: CompoundBatchDoc[] }> = ({
             <Text style={styles.col10}>Consumed (kg)</Text>
           </View>
 
-          {batches.map((batch, index) => (
+          {sortedBatches.map((batch, index) => (
             <View key={batch._id?.toString() || index} style={styles.tableRow}>
               <Text style={styles.col1}>{index + 1}</Text>
               <Text style={styles.col2}>{formatCompoundCode(batch)}</Text>
@@ -200,8 +219,11 @@ export const CompoundBatchesPDFReportButton: React.FC<CompoundBatchesPDFReportPr
   const handleDownloadXLSX = () => {
     setIsGeneratingExcel(true);
     try {
+      // Sort batches by produced on date in descending order
+      const sortedBatches = sortBatchesByProducedOn(batches);
+      
       // Prepare data for Excel
-      const excelData = batches.map((batch, index) => {
+      const excelData = sortedBatches.map((batch, index) => {
         const producedOnDate = batch.coverCompoundProducedOn || batch.skimCompoundProducedOn;
         const dateToUse = producedOnDate || batch.date;
         const formattedDate = dateToUse ? dateToUse.replace(/-/g, '') : '';
