@@ -24,10 +24,13 @@ async function getCompoundBatches(request: NextRequest) {
     if (date) query.date = date;
 
     // Default sorting: newest first
+    // Use lean() for better performance and select only needed fields
     // Populate compoundMasterId with rawMaterials from CompoundMaster
     // materialsUsed is already included in the CompoundBatch document by default
     const batches = await CompoundBatch.find(query)
       .populate('compoundMasterId', 'rawMaterials')
+      .select('compoundCode compoundName date batches weightPerBatch totalInventory inventoryRemaining consumed materialsUsed compoundMasterId coverCompoundProducedOn skimCompoundProducedOn createdAt updatedAt')
+      .lean()
       .sort({ date: -1 });
 
     const response: ApiResponse = {

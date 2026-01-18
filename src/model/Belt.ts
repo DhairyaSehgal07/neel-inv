@@ -114,6 +114,27 @@ const BeltSchema = new Schema<BeltDoc>(
   { timestamps: true }
 );
 
+/* ----------------- INDEXES ------------------ */
+// Index for sorting by createdAt (most common query)
+BeltSchema.index({ createdAt: -1 });
+
+// Index for status filtering
+BeltSchema.index({ status: 1 });
+
+// Index for fabricId lookups
+BeltSchema.index({ fabricId: 1 });
+
+// Compound index for status + createdAt (common filter + sort combination)
+BeltSchema.index({ status: 1, createdAt: -1 });
+
+// Text indexes for search functionality (beltNumber, orderNumber, buyerName)
+BeltSchema.index({ beltNumber: 'text', orderNumber: 'text', buyerName: 'text' });
+
+// Individual indexes for regex searches (case-insensitive searches)
+BeltSchema.index({ beltNumber: 1 });
+BeltSchema.index({ orderNumber: 1 });
+BeltSchema.index({ buyerName: 1 });
+
 const Belt =
   (mongoose.models.Belt as mongoose.Model<BeltDoc>) || mongoose.model<BeltDoc>('Belt', BeltSchema);
 
