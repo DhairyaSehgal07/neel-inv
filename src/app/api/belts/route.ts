@@ -53,11 +53,12 @@ async function enrichBatchData(
     skimCompoundProducedOn?: string;
   }>();
   compoundBatches.forEach((batch) => {
-    if (batch._id && batch.compoundCode && batch.date) {
+    // Include batch if it has compoundCode (date fields are optional)
+    if (batch._id && batch.compoundCode) {
       const batchIdStr = typeof batch._id === 'string' ? batch._id : batch._id.toString();
       batchMap.set(batchIdStr, {
         compoundCode: batch.compoundCode,
-        date: batch.date,
+        date: batch.date || '',
         coverCompoundProducedOn: batch.coverCompoundProducedOn,
         skimCompoundProducedOn: batch.skimCompoundProducedOn,
       });
