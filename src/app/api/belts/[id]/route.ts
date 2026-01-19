@@ -267,13 +267,20 @@ async function updateBeltHandler(
           : undefined)
       : undefined;
 
-    // Update CompoundBatch and CompoundHistory if dates are being updated
-    if (coverProducedOnDate !== undefined || skimProducedOnDate !== undefined) {
-      // Collect batch IDs separately for cover and skim batches
+    // Check if dates have actually changed from existing values
+    const existingCoverDate = existingBelt.process?.coverCompoundProducedOn;
+    const existingSkimDate = existingBelt.process?.skimCompoundProducedOn;
+
+    const coverDateChanged = coverProducedOnDate !== undefined && coverProducedOnDate !== existingCoverDate;
+    const skimDateChanged = skimProducedOnDate !== undefined && skimProducedOnDate !== existingSkimDate;
+
+    // Update CompoundBatch and CompoundHistory only if dates have actually changed
+    if (coverDateChanged || skimDateChanged) {
+      // Collect batch IDs separately for cover and skim batches (only if dates have changed)
       const coverBatchIds: mongoose.Types.ObjectId[] = [];
       const skimBatchIds: mongoose.Types.ObjectId[] = [];
 
-      if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed && updatedBelt.coverBatchesUsed.length > 0) {
+      if (coverDateChanged && updatedBelt.coverBatchesUsed && updatedBelt.coverBatchesUsed.length > 0) {
         updatedBelt.coverBatchesUsed.forEach((batch) => {
           if (batch.batchId) {
             coverBatchIds.push(batch.batchId as mongoose.Types.ObjectId);
@@ -281,7 +288,7 @@ async function updateBeltHandler(
         });
       }
 
-      if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed && updatedBelt.skimBatchesUsed.length > 0) {
+      if (skimDateChanged && updatedBelt.skimBatchesUsed && updatedBelt.skimBatchesUsed.length > 0) {
         updatedBelt.skimBatchesUsed.forEach((batch) => {
           if (batch.batchId) {
             skimBatchIds.push(batch.batchId as mongoose.Types.ObjectId);
@@ -289,8 +296,8 @@ async function updateBeltHandler(
         });
       }
 
-      // Update cover batches if coverCompoundProducedOn is being updated
-      if (coverProducedOnDate !== undefined && coverBatchIds.length > 0) {
+      // Update cover batches if coverCompoundProducedOn has actually changed
+      if (coverDateChanged && coverBatchIds.length > 0) {
         // Check if the date already exists in other CompoundBatch documents (cover or skim)
         // Excluding batches that are being updated (they might already have this date, which is fine)
         const existingBatchWithCoverDate = await CompoundBatch.findOne({
@@ -350,8 +357,8 @@ async function updateBeltHandler(
         }
       }
 
-      // Update skim batches if skimCompoundProducedOn is being updated
-      if (skimProducedOnDate !== undefined && skimBatchIds.length > 0) {
+      // Update skim batches if skimCompoundProducedOn has actually changed
+      if (skimDateChanged && skimBatchIds.length > 0) {
         // Check if the date already exists in other CompoundBatch documents (skim or cover)
         // Excluding batches that are being updated (they might already have this date, which is fine)
         const existingBatchWithSkimDate = await CompoundBatch.findOne({
@@ -411,15 +418,15 @@ async function updateBeltHandler(
         }
       }
 
-      // Update BatchUsage arrays in the belt if dates are provided
-      if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed) {
+      // Update BatchUsage arrays in the belt if dates have changed
+      if (coverDateChanged && updatedBelt.coverBatchesUsed) {
         updatedBelt.coverBatchesUsed = updatedBelt.coverBatchesUsed.map((batch) => ({
           ...batch,
           coverCompoundProducedOn: coverProducedOnDate,
         }));
       }
 
-      if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed) {
+      if (skimDateChanged && updatedBelt.skimBatchesUsed) {
         updatedBelt.skimBatchesUsed = updatedBelt.skimBatchesUsed.map((batch) => ({
           ...batch,
           skimCompoundProducedOn: skimProducedOnDate,
@@ -427,17 +434,17 @@ async function updateBeltHandler(
       }
 
       // Update the belt with the modified BatchUsage arrays
-      if (coverProducedOnDate !== undefined || skimProducedOnDate !== undefined) {
+      if (coverDateChanged || skimDateChanged) {
         const batchUsageUpdate: {
           coverBatchesUsed?: typeof updatedBelt.coverBatchesUsed;
           skimBatchesUsed?: typeof updatedBelt.skimBatchesUsed;
         } = {};
 
-        if (coverProducedOnDate !== undefined && updatedBelt.coverBatchesUsed) {
+        if (coverDateChanged && updatedBelt.coverBatchesUsed) {
           batchUsageUpdate.coverBatchesUsed = updatedBelt.coverBatchesUsed;
         }
 
-        if (skimProducedOnDate !== undefined && updatedBelt.skimBatchesUsed) {
+        if (skimDateChanged && updatedBelt.skimBatchesUsed) {
           batchUsageUpdate.skimBatchesUsed = updatedBelt.skimBatchesUsed;
         }
 
