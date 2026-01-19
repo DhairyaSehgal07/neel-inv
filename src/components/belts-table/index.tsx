@@ -90,7 +90,14 @@ export default function BeltsTable() {
         </div>
 
         <DataTable
-          columns={columns}
+          columns={
+            isAdmin
+              ? columns
+              : columns.filter((col) => {
+                  const key = 'accessorKey' in col ? col.accessorKey : 'id' in col ? col.id : null;
+                  return key !== 'createdAt';
+                })
+          }
           data={data || []}
           searchKey="beltNumber"
           searchPlaceholder="Search by belt number, order number, buyer name, or rating..."
