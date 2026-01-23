@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Settings, Layers, Package, FileText,Factory } from 'lucide-react';
+import { Settings, Layers, Package, FileText,Factory, Shield } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -24,24 +24,28 @@ const navigationItems = [
     href: '/dashboard/belts',
     icon: Package,
     activePaths: ['/dashboard/belts', '/dashboard/belts/create', '/dashboard/belts/edit'],
+    adminOnly: false,
   },
   {
     name: 'Compounds',
     href: '/dashboard/compounds',
     icon: Layers,
     activePaths: ['/dashboard/compounds', '/dashboard/compounds/create'],
+    adminOnly: false,
   },
   {
     name: 'Reports',
     href: '/dashboard/reports',
     icon: FileText,
     activePaths: ['/dashboard/reports'],
+    adminOnly: false,
   },
   {
     name: 'Raw Materials',
     href: '/dashboard/raw-materials',
     icon: Factory,
     activePaths: ['/dashboard/raw-materials'],
+    adminOnly: false,
   },
   {
     name: 'Settings',
@@ -53,6 +57,14 @@ const navigationItems = [
       '/dashboard/settings/fabrics',
       '/dashboard/settings/belts',
     ],
+    adminOnly: true,
+  },
+  {
+    name: 'Admin Panel',
+    href: '/dashboard/admin-panel',
+    icon: Shield,
+    activePaths: ['/dashboard/admin-panel'],
+    adminOnly: true,
   },
 ];
 
@@ -61,7 +73,7 @@ const AppSidebar = () => {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === 'Admin';
 
-  const filteredNavigationItems = navigationItems.filter(item => (item.name === "Settings" ? isAdmin : true));
+  const filteredNavigationItems = navigationItems.filter(item => (item.adminOnly ? isAdmin : true));
 
   return (
     <Sidebar collapsible="icon">

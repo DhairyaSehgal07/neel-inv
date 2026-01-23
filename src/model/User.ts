@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 import { Permission, ALL_PERMISSIONS } from "@/lib/rbac/permissions";
 
-export type Role = "Admin" | "Manager" | "Operator" | "Worker";
+export type Role = "Admin" | "Manager" | "Supervisor" | "Operator" | "Worker";
 
 export interface User extends Document {
   name: string;
