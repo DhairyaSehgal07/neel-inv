@@ -66,3 +66,28 @@ export function useDeleteUserMutation() {
     },
   });
 }
+
+async function createUserClient(payload: {
+  name: string;
+  mobileNumber: string;
+  password: string;
+  role?: string;
+  permissions?: string[];
+  isActive?: boolean;
+}): Promise<User> {
+  const response = await api.post<ApiResponse<User>>('/api/users', payload);
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to create user');
+  }
+  return response.data.data!;
+}
+
+export function useCreateUserMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createUserClient,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
