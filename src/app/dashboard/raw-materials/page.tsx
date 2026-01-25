@@ -1,4 +1,3 @@
-import React from 'react'
 import RawMaterialsPage from '@/components/raw-materials'
 
 const page = () => {

@@ -60,27 +60,66 @@ export const columns: ColumnDef<RawMaterialDoc>[] = [
     header: createSortableHeader('Date'),
     enableSorting: true,
     sortingFn: (rowA, rowB) => {
-      const dateA = rowA.original.date || '';
-      const dateB = rowB.original.date || '';
+      const dateA = (rowA.getValue('date') as string) || rowA.original.date || '';
+      const dateB = (rowB.getValue('date') as string) || rowB.original.date || '';
+      
       if (!dateA && !dateB) return 0;
       if (!dateA) return 1;
       if (!dateB) return -1;
 
-      // Parse YYYY-MM-DD format properly
+      // Parse date from various formats
       const parseDate = (dateStr: string): number => {
         if (!dateStr || typeof dateStr !== 'string') return 0;
         const trimmed = dateStr.trim();
-        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-        if (!dateRegex.test(trimmed)) return 0;
+        if (!trimmed) return 0;
 
-        const [year, month, day] = trimmed.split('-').map(Number);
-        if (isNaN(year) || isNaN(month) || isNaN(day)) return 0;
+        // Try YYYY-MM-DD format first (primary format stored in database)
+        const yyyyMMddRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+        const yyyyMMddMatch = trimmed.match(yyyyMMddRegex);
+        if (yyyyMMddMatch) {
+          const year = parseInt(yyyyMMddMatch[1], 10);
+          const month = parseInt(yyyyMMddMatch[2], 10);
+          const day = parseInt(yyyyMMddMatch[3], 10);
+          if (!isNaN(year) && !isNaN(month) && !isNaN(day) && month >= 1 && month <= 12) {
+            const date = new Date(year, month - 1, day);
+            if (!isNaN(date.getTime())) {
+              return date.getTime();
+            }
+          }
+        }
 
-        const date = new Date(year, month - 1, day);
-        return isNaN(date.getTime()) ? 0 : date.getTime();
+        // Try DD.MM.YYYY or DD/MM/YYYY format (display format)
+        const ddmmyyyyRegex = /^(\d{2})[./](\d{2})[./](\d{4})$/;
+        const ddmmyyyyMatch = trimmed.match(ddmmyyyyRegex);
+        if (ddmmyyyyMatch) {
+          const day = parseInt(ddmmyyyyMatch[1], 10);
+          const month = parseInt(ddmmyyyyMatch[2], 10);
+          const year = parseInt(ddmmyyyyMatch[3], 10);
+          if (!isNaN(year) && !isNaN(month) && !isNaN(day) && month >= 1 && month <= 12) {
+            const date = new Date(year, month - 1, day);
+            if (!isNaN(date.getTime())) {
+              return date.getTime();
+            }
+          }
+        }
+
+        // Fallback: try to parse as Date object
+        try {
+          const date = new Date(trimmed);
+          if (!isNaN(date.getTime())) {
+            return date.getTime();
+          }
+        } catch {
+          // Ignore parsing errors
+        }
+
+        // If all parsing fails, return 0 (will be sorted to top/bottom)
+        return 0;
       };
 
-      return parseDate(dateA) - parseDate(dateB);
+      const timeA = parseDate(dateA);
+      const timeB = parseDate(dateB);
+      return timeA - timeB;
     },
     cell: ({ row }) => {
       const dateStr = row.original.date;
