@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.25](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.24...v0.1.25) (2026-02-25)
+
+
+### Features
+
+* add randomize-materials API for compound batches to re-resolve and randomize material codes
+* add resolveMaterialsUsed helper in compound-utils for shared material resolution logic
+* enhance raw materials edit dialog and raw materials API
+* extend RawMaterial model with additional fields
+* refactor CompoundBatch to use resolveMaterialsUsed from compound-utils
+
 ### [0.1.24](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.23...v0.1.24) (2026-01-13)
 
 

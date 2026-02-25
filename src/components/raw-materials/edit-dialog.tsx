@@ -22,44 +22,83 @@ function parseLocalDate(dateStr: string | Date | null | undefined): Date | undef
     // Validate the Date object
     return isNaN(dateStr.getTime()) ? undefined : dateStr;
   }
-  if (!dateStr || typeof dateStr !== 'string') return undefined;
+  if (!dateStr) return undefined;
+  
+  if (typeof dateStr !== 'string') {
+    // Try to convert to string if it's not already
+    try {
+      dateStr = String(dateStr);
+    } catch {
+      return undefined;
+    }
+  }
 
   const trimmed = dateStr.trim();
   if (!trimmed) return undefined;
 
   try {
-    // Check if it's in YYYY-MM-DD format
-    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!dateRegex.test(trimmed)) {
-      return undefined;
+    // Check if it's in YYYY-MM-DD format (primary format from database)
+    const yyyyMMddRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const yyyyMMddMatch = trimmed.match(yyyyMMddRegex);
+    
+    if (yyyyMMddMatch) {
+      const year = parseInt(yyyyMMddMatch[1], 10);
+      const month = parseInt(yyyyMMddMatch[2], 10);
+      const day = parseInt(yyyyMMddMatch[3], 10);
+
+      // Validate the numbers
+      if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        return undefined;
+      }
+
+      // Validate reasonable date ranges
+      if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+        return undefined;
+      }
+
+      // Create date in local timezone (month is 0-indexed in Date constructor)
+      const date = new Date(year, month - 1, day);
+
+      // Validate the created date (check if it's a valid date)
+      if (isNaN(date.getTime())) {
+        return undefined;
+      }
+
+      // Double-check that the date components match (handles invalid dates like Feb 30)
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return undefined;
+      }
+
+      return date;
     }
 
-    const [year, month, day] = trimmed.split('-').map(Number);
+    // Try DD/MM/YYYY or DD.MM.YYYY format (display format)
+    const ddmmyyyyRegex = /^(\d{2})[./](\d{2})[./](\d{4})$/;
+    const ddmmyyyyMatch = trimmed.match(ddmmyyyyRegex);
+    
+    if (ddmmyyyyMatch) {
+      const day = parseInt(ddmmyyyyMatch[1], 10);
+      const month = parseInt(ddmmyyyyMatch[2], 10);
+      const year = parseInt(ddmmyyyyMatch[3], 10);
 
-    // Validate the numbers
-    if (isNaN(year) || isNaN(month) || isNaN(day)) {
-      return undefined;
+      if (!isNaN(year) && !isNaN(month) && !isNaN(day) && month >= 1 && month <= 12) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime()) && 
+            date.getFullYear() === year && 
+            date.getMonth() === month - 1 && 
+            date.getDate() === day) {
+          return date;
+        }
+      }
     }
 
-    // Validate reasonable date ranges
-    if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
-      return undefined;
+    // Fallback: try to parse as ISO date string
+    const isoDate = new Date(trimmed);
+    if (!isNaN(isoDate.getTime())) {
+      return isoDate;
     }
 
-    // Create date in local timezone (month is 0-indexed in Date constructor)
-    const date = new Date(year, month - 1, day);
-
-    // Validate the created date (check if it's a valid date)
-    if (isNaN(date.getTime())) {
-      return undefined;
-    }
-
-    // Double-check that the date components match (handles invalid dates like Feb 30)
-    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-      return undefined;
-    }
-
-    return date;
+    return undefined;
   } catch {
     return undefined;
   }
@@ -76,9 +115,10 @@ function EditRawMaterialFormContent({
 }) {
   const updateMutation = useUpdateRawMaterialMutation();
 
-  const [materialCode, setMaterialCode] = useState(rawMaterial.materialCode || '');
-  const [date, setDate] = useState<Date | undefined>(parseLocalDate(rawMaterial.date));
-  const [rawMaterialName, setRawMaterialName] = useState(rawMaterial.rawMaterial || '');
+  // Use function initializer to ensure we get the latest values when component remounts
+  const [materialCode, setMaterialCode] = useState(() => rawMaterial.materialCode || '');
+  const [date, setDate] = useState<Date | undefined>(() => parseLocalDate(rawMaterial.date));
+  const [rawMaterialName, setRawMaterialName] = useState(() => rawMaterial.rawMaterial || '');
 
   const handleSubmit = async () => {
     if (!materialCode.trim()) {
@@ -169,6 +209,11 @@ export default function EditRawMaterialDialog({
     return typeof rawMaterial._id === 'string' ? rawMaterial._id : String(rawMaterial._id);
   }, [rawMaterial._id]);
 
+  // Create a unique key that includes the date to force remount when switching items
+  const componentKey = useMemo(() => {
+    return `${rawMaterialId}-${rawMaterial.date || ''}`;
+  }, [rawMaterialId, rawMaterial.date]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -176,12 +221,14 @@ export default function EditRawMaterialDialog({
           <DialogTitle>Edit Raw Material</DialogTitle>
         </DialogHeader>
 
-        <EditRawMaterialFormContent
-          key={rawMaterialId}
-          rawMaterial={rawMaterial}
-          rawMaterialId={rawMaterialId}
-          onClose={() => onOpenChange(false)}
-        />
+        {open && (
+          <EditRawMaterialFormContent
+            key={componentKey}
+            rawMaterial={rawMaterial}
+            rawMaterialId={rawMaterialId}
+            onClose={() => onOpenChange(false)}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

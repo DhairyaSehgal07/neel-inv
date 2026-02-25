@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { getMaterialCodeDateRange } from '@/lib/helpers/compound-utils';
-import RawMaterial from '@/model/RawMaterial';
+import { resolveMaterialsUsed } from '@/lib/helpers/compound-utils';
 
 export interface CompoundBatchDoc extends Document {
   compoundCode: string;
@@ -122,68 +121,7 @@ CompoundBatchSchema.pre('save', async function () {
         (!doc.materialsUsed || doc.materialsUsed.length === 0 || wasProductionDateJustSet);
 
       if (shouldPopulateMaterials) {
-        // Build materialsUsed array with assigned material codes
-        const materialsUsed: MaterialUsed[] = [];
-
-        for (const materialName of master.rawMaterials) {
-          // Trim and normalize material name for matching
-          const normalizedMaterialName = materialName.trim();
-          const regex = new RegExp(`^${normalizedMaterialName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i');
-
-          let materialCode = '';
-          const maxMonthsBack = 12; // Maximum months to look back
-
-          // Start with 3 months, expand until found or maxMonthsBack reached
-          for (let monthsBack = 3; monthsBack <= maxMonthsBack; monthsBack++) {
-            const { startDate, endDate } = getMaterialCodeDateRange(productionDate, monthsBack);
-
-            const availableMaterials = await RawMaterial.find({
-              rawMaterial: { $regex: regex },
-              date: {
-                $gte: startDate,
-                $lte: endDate,
-              },
-            }).lean();
-
-            if (availableMaterials.length > 0) {
-              // Randomly select one material code from available options
-              const randomIndex = Math.floor(Math.random() * availableMaterials.length);
-              const selectedMaterial = availableMaterials[randomIndex] as unknown as {
-                materialCode: string;
-                rawMaterial: string;
-                date: string;
-              };
-
-              materialCode = selectedMaterial?.materialCode || '';
-              if (materialCode) {
-                break; // Found a material code, exit the loop
-              }
-            }
-          }
-
-          // If still not found, try to find any material with this name (no date restriction)
-          if (!materialCode) {
-            const anyMaterial = await RawMaterial.find({
-              rawMaterial: { $regex: regex },
-            }).limit(1).lean();
-
-            if (anyMaterial.length > 0) {
-              const selectedMaterial = anyMaterial[0] as unknown as {
-                materialCode: string;
-                rawMaterial: string;
-                date: string;
-              };
-              materialCode = selectedMaterial?.materialCode || '';
-            }
-          }
-
-          materialsUsed.push({
-            materialName,
-            materialCode: materialCode || '',
-          });
-        }
-
-        doc.materialsUsed = materialsUsed;
+        doc.materialsUsed = await resolveMaterialsUsed(master.rawMaterials, productionDate);
       }
     }
   }

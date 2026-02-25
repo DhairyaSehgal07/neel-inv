@@ -47,3 +47,6 @@ generate-compounds.js
 Belt_Creation_Context.md
 
 belts.json
+
+# Internal docs (material tagging logic for Compound Master Report)
+COMPOUND_MASTER_REPORT_MATERIAL_TAGGING.md

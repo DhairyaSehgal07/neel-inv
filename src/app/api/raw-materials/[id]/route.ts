@@ -85,7 +85,10 @@ async function updateRawMaterial(
     const updateData: Partial<typeof existing> = {};
     if (materialCode !== undefined) updateData.materialCode = materialCode.trim();
     if (date !== undefined) updateData.date = formattedDate;
-    if (rawMaterial !== undefined) updateData.rawMaterial = rawMaterial.trim();
+    if (rawMaterial !== undefined) {
+      updateData.rawMaterial = rawMaterial.trim();
+      updateData.rawMaterialNormalized = rawMaterial.trim().toLowerCase();
+    }
 
     // Update raw material
     const updated = await RawMaterial.findByIdAndUpdate(
