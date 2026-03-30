@@ -17,6 +17,40 @@ interface MasterBeltReportProps {
   belts: BeltDoc[];
 }
 
+const STAGE_DATE_FIELDS: Array<{
+  key: keyof NonNullable<BeltDoc['process']>;
+  label: string;
+}> = [
+  { key: 'calendaringDate', label: 'Calendaring' },
+  { key: 'greenBeltDate', label: 'Green Belt' },
+  { key: 'curingDate', label: 'Curing' },
+  { key: 'inspectionDate', label: 'Inspection' },
+  { key: 'pidDate', label: 'PID' },
+  { key: 'packagingDate', label: 'Packaging' },
+  { key: 'dispatchDate', label: 'Dispatch' },
+];
+
+const getBeltStage = (belt: BeltDoc): string => {
+  const process = belt.process;
+  if (!process) return 'Not Started';
+
+  let latestStage = 'Not Started';
+  let latestDate = Number.NEGATIVE_INFINITY;
+
+  for (const { key, label } of STAGE_DATE_FIELDS) {
+    const dateValue = process[key];
+    if (!dateValue) continue;
+
+    const parsedDate = new Date(dateValue).getTime();
+    if (!Number.isNaN(parsedDate) && parsedDate > latestDate) {
+      latestDate = parsedDate;
+      latestStage = label;
+    }
+  }
+
+  return latestStage;
+};
+
 const styles = StyleSheet.create({
   page: {
     padding: 20,
@@ -55,20 +89,21 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
-  col1: { width: '5.5%', fontSize: 7 }, // S.No.
-  col2: { width: '7.5%', fontSize: 7 }, // Belt No.
-  col3: { width: '6%', fontSize: 7 }, // Width
-  col4: { width: '7%', fontSize: 7 }, // Rating
-  col5: { width: '7%', fontSize: 7 }, // Fabric Type
-  col6: { width: '5%', fontSize: 7 }, // Top
-  col7: { width: '5%', fontSize: 7 }, // Bottom
-  col8: { width: '7%', fontSize: 7 }, // Cover Grade
-  col9: { width: '5%', fontSize: 7 }, // Edge
-  col10: { width: '6%', fontSize: 7 }, // Length
-  col11: { width: '12%', fontSize: 7 }, // Compound Code
-  col12: { width: '10%', fontSize: 7 }, // Produced
-  col13: { width: '10%', fontSize: 7 }, // Consumed
-  col14: { width: '8%', fontSize: 7 }, // Weight
+  col1: { width: '5%', fontSize: 7 }, // S.No.
+  col2: { width: '7%', fontSize: 7 }, // Belt No.
+  col3: { width: '5.5%', fontSize: 7 }, // Width
+  col4: { width: '6.5%', fontSize: 7 }, // Rating
+  col5: { width: '6.5%', fontSize: 7 }, // Fabric Type
+  col6: { width: '4.5%', fontSize: 7 }, // Top
+  col7: { width: '4.5%', fontSize: 7 }, // Bottom
+  col8: { width: '6%', fontSize: 7 }, // Cover Grade
+  col9: { width: '4.5%', fontSize: 7 }, // Edge
+  col10: { width: '5.5%', fontSize: 7 }, // Length
+  col11: { width: '9%', fontSize: 7 }, // Stage
+  col12: { width: '10.5%', fontSize: 7 }, // Compound Code
+  col13: { width: '9%', fontSize: 7 }, // Produced
+  col14: { width: '9%', fontSize: 7 }, // Consumed
+  col15: { width: '7%', fontSize: 7 }, // Weight
   subHeaderRow: {
     flexDirection: 'row',
     backgroundColor: '#e5e7eb',
@@ -204,10 +239,11 @@ const MasterBeltPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
             <Text style={styles.col8}>Cover Grade</Text>
             <Text style={styles.col9}>Edge</Text>
             <Text style={styles.col10}>Length</Text>
-            <Text style={styles.col11}>Compound Code</Text>
-            <Text style={styles.col12}>Produced</Text>
-            <Text style={styles.col13}>Consumed</Text>
-            <Text style={styles.col14}>Weight</Text>
+            <Text style={styles.col11}>Stage</Text>
+            <Text style={styles.col12}>Compound Code</Text>
+            <Text style={styles.col13}>Produced</Text>
+            <Text style={styles.col14}>Consumed</Text>
+            <Text style={styles.col15}>Weight</Text>
           </View>
 
           {belts.map((belt, index) => {
@@ -226,6 +262,7 @@ const MasterBeltPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
                     <Text style={styles.col8}>{belt.coverGrade || 'N/A'}</Text>
                     <Text style={styles.col9}>{belt.edge || 'N/A'}</Text>
                     <Text style={styles.col10}>{belt.beltLengthM ? `${belt.beltLengthM} m` : 'N/A'}</Text>
+                    <Text style={styles.col11}>{getBeltStage(belt)}</Text>
                   </>
                 )}
                 {compoundIndex > 0 && (
@@ -240,12 +277,13 @@ const MasterBeltPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
                     <Text style={styles.col8}>{' '}</Text>
                     <Text style={styles.col9}>{' '}</Text>
                     <Text style={styles.col10}>{' '}</Text>
+                    <Text style={styles.col11}>{' '}</Text>
                   </>
                 )}
-                <Text style={styles.col11}>{compound.code}</Text>
-                <Text style={styles.col12}>{compound.producedOn}</Text>
-                <Text style={styles.col13}>{compound.consumedOn}</Text>
-                <Text style={styles.col14}>{compound.weight}</Text>
+                <Text style={styles.col12}>{compound.code}</Text>
+                <Text style={styles.col13}>{compound.producedOn}</Text>
+                <Text style={styles.col14}>{compound.consumedOn}</Text>
+                <Text style={styles.col15}>{compound.weight}</Text>
               </View>
             ));
           })}
@@ -312,6 +350,7 @@ export const MasterBeltReportButton: React.FC<MasterBeltReportProps> = ({ belts 
         'Cover Grade': string;
         'Edge': string;
         'Length (m)': string | number;
+        'Stage': string;
         'Compound Code': string;
         'Produced': string;
         'Consumed': string;
@@ -332,6 +371,7 @@ export const MasterBeltReportButton: React.FC<MasterBeltReportProps> = ({ belts 
             'Cover Grade': compoundIndex === 0 ? (belt.coverGrade || '') : '',
             'Edge': compoundIndex === 0 ? (belt.edge || '') : '',
             'Length (m)': compoundIndex === 0 ? (belt.beltLengthM || '') : '',
+            'Stage': compoundIndex === 0 ? getBeltStage(belt) : '',
             'Compound Code': compound.code,
             'Produced': compound.producedOn,
             'Consumed': compound.consumedOn,
@@ -356,6 +396,7 @@ export const MasterBeltReportButton: React.FC<MasterBeltReportProps> = ({ belts 
         { wch: 12 }, // Cover Grade
         { wch: 10 }, // Edge
         { wch: 12 }, // Length
+        { wch: 16 }, // Stage
         { wch: 20 }, // Compound Code
         { wch: 15 }, // Produced
         { wch: 15 }, // Consumed

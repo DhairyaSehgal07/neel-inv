@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.26](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.25...v0.1.26) (2026-03-30)
+
+### Features
+
+* add stage derivation and filtering to belts table (latest process date-based stage)
+* include Stage in belts and master belt PDF/XLSX report exports
+* add optional material code selection in compound batch creation UI
+* add raw material codes API endpoint and query hook for compound batch workflows
+* allow creating compound batches with validated manual material code mapping
+
 ### [0.1.25](https://github.com/DhairyaSehgal07/neel-inv/compare/v0.1.24...v0.1.25) (2026-02-25)
 
 

@@ -34,6 +34,22 @@ export function useRawMaterialsQuery(params?: FetchRawMaterialsParams) {
   });
 }
 
+async function getMaterialCodesClient(): Promise<string[]> {
+  const response = await api.get<ApiResponse<string[]>>('/api/raw-materials/material-codes');
+  if (!response.data.success) {
+    throw new Error(response.data.message || 'Failed to fetch material codes');
+  }
+  return response.data.data || [];
+}
+
+export function useRawMaterialCodesQuery() {
+  return useQuery({
+    queryKey: ['raw-materials', 'material-codes'],
+    queryFn: getMaterialCodesClient,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 interface CreateRawMaterialPayload {
   materialCode: string;
   date: Date | string;

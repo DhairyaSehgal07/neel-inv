@@ -18,6 +18,40 @@ interface BeltsPDFReportProps {
   belts: BeltDoc[];
 }
 
+const STAGE_DATE_FIELDS: Array<{
+  key: keyof NonNullable<BeltDoc['process']>;
+  label: string;
+}> = [
+  { key: 'calendaringDate', label: 'Calendaring' },
+  { key: 'greenBeltDate', label: 'Green Belt' },
+  { key: 'curingDate', label: 'Curing' },
+  { key: 'inspectionDate', label: 'Inspection' },
+  { key: 'pidDate', label: 'PID' },
+  { key: 'packagingDate', label: 'Packaging' },
+  { key: 'dispatchDate', label: 'Dispatch' },
+];
+
+const getBeltStage = (belt: BeltDoc): string => {
+  const process = belt.process;
+  if (!process) return 'Not Started';
+
+  let latestStage = 'Not Started';
+  let latestDate = Number.NEGATIVE_INFINITY;
+
+  for (const { key, label } of STAGE_DATE_FIELDS) {
+    const dateValue = process[key];
+    if (!dateValue) continue;
+
+    const parsedDate = new Date(dateValue).getTime();
+    if (!Number.isNaN(parsedDate) && parsedDate > latestDate) {
+      latestDate = parsedDate;
+      latestStage = label;
+    }
+  }
+
+  return latestStage;
+};
+
 const styles = StyleSheet.create({
   page: {
     padding: 30,
@@ -65,8 +99,9 @@ const styles = StyleSheet.create({
   col7: { width: '9%', fontSize: 8 },
   col8: { width: '11%', fontSize: 8 },
   col9: { width: '9%', fontSize: 8 },
-  col10: { width: '9%', fontSize: 8 },
-  col11: { width: '8%', fontSize: 8 },
+  col10: { width: '8%', fontSize: 8 },
+  col11: { width: '7%', fontSize: 8 },
+  col12: { width: '8%', fontSize: 8 },
   footer: {
     position: 'absolute',
     bottom: 30,
@@ -106,6 +141,7 @@ const BeltsPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
             <Text style={styles.col9}>Edge</Text>
             <Text style={styles.col10}>Length</Text>
             <Text style={styles.col11}>Status</Text>
+            <Text style={styles.col12}>Stage</Text>
           </View>
 
           {belts.map((belt, index) => (
@@ -121,6 +157,7 @@ const BeltsPDFDocument: React.FC<{ belts: BeltDoc[] }> = ({ belts }) => {
               <Text style={styles.col9}>{belt.edge}</Text>
               <Text style={styles.col10}>{belt.beltLengthM}</Text>
               <Text style={styles.col11}>{belt.status}</Text>
+              <Text style={styles.col12}>{getBeltStage(belt)}</Text>
             </View>
           ))}
         </View>
@@ -187,6 +224,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
         'Edge': belt.edge || '',
         'Length (m)': belt.beltLengthM || '',
         'Status': belt.status || '',
+        'Stage': getBeltStage(belt),
       }));
 
       // Create workbook and worksheet
@@ -206,6 +244,7 @@ export const BeltsPDFReportButton: React.FC<BeltsPDFReportProps> = ({ belts }) =
         { wch: 10 }, // Edge
         { wch: 12 }, // Length
         { wch: 12 }, // Status
+        { wch: 16 }, // Stage
       ];
       ws['!cols'] = colWidths;
 

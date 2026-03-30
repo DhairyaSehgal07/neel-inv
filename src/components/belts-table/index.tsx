@@ -107,6 +107,20 @@ export default function BeltsTable() {
             { value: 'Dispatched', label: 'Dispatched' },
           ]}
           filterPlaceholder="Filter by status"
+          filterAllOptionLabel="All Statuses"
+          secondaryFilterKey="stage"
+          secondaryFilterOptions={[
+            { value: 'Not Started', label: 'Not Started' },
+            { value: 'Calendaring', label: 'Calendaring' },
+            { value: 'Green Belt', label: 'Green Belt' },
+            { value: 'Curing', label: 'Curing' },
+            { value: 'Inspection', label: 'Inspection' },
+            { value: 'PID', label: 'PID' },
+            { value: 'Packaging', label: 'Packaging' },
+            { value: 'Dispatch', label: 'Dispatch' },
+          ]}
+          secondaryFilterPlaceholder="Filter by stage"
+          secondaryFilterAllOptionLabel="All Stages"
         />
       </div>
 

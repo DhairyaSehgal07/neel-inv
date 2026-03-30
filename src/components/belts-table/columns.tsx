@@ -11,6 +11,42 @@ import { Button } from '@/components/ui/button';
 
 type BeltWithFabric = BeltDoc & { fabric?: FabricInfo };
 
+type StageOption = {
+  key: keyof NonNullable<BeltDoc['process']>;
+  label: string;
+};
+
+const STAGE_DATE_FIELDS: StageOption[] = [
+  { key: 'calendaringDate', label: 'Calendaring' },
+  { key: 'greenBeltDate', label: 'Green Belt' },
+  { key: 'curingDate', label: 'Curing' },
+  { key: 'inspectionDate', label: 'Inspection' },
+  { key: 'pidDate', label: 'PID' },
+  { key: 'packagingDate', label: 'Packaging' },
+  { key: 'dispatchDate', label: 'Dispatch' },
+];
+
+const getBeltStage = (belt: BeltWithFabric): string => {
+  const process = belt.process;
+  if (!process) return 'Not Started';
+
+  let latestStage = 'Not Started';
+  let latestDate = Number.NEGATIVE_INFINITY;
+
+  for (const { key, label } of STAGE_DATE_FIELDS) {
+    const dateValue = process[key];
+    if (!dateValue) continue;
+
+    const parsedDate = new Date(dateValue).getTime();
+    if (!Number.isNaN(parsedDate) && parsedDate > latestDate) {
+      latestDate = parsedDate;
+      latestStage = label;
+    }
+  }
+
+  return latestStage;
+};
+
 // Helper function to create sortable header
 const createSortableHeader = (title: string) => {
   const SortableHeader = ({ column }: { column: Column<BeltWithFabric> }) => {
@@ -122,6 +158,21 @@ export const columns: ColumnDef<BeltWithFabric>[] = [
       const status = row.original.status;
       return <Badge variant={status === 'Dispatched' ? 'default' : 'secondary'}>{status}</Badge>;
     },
+    filterFn: (row, id, value) => {
+      return value === undefined || row.getValue(id) === value;
+    },
+  },
+  {
+    id: 'stage',
+    accessorFn: (row) => getBeltStage(row),
+    header: createSortableHeader('Stage'),
+    enableSorting: true,
+    sortingFn: (rowA, rowB) => {
+      const stageA = getBeltStage(rowA.original);
+      const stageB = getBeltStage(rowB.original);
+      return stageA.localeCompare(stageB);
+    },
+    cell: ({ row }) => getBeltStage(row.original),
     filterFn: (row, id, value) => {
       return value === undefined || row.getValue(id) === value;
     },

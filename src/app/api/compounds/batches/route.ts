@@ -3,6 +3,7 @@ import dbConnect from '@/lib/dbConnect';
 import CompoundBatch from '@/model/CompoundBatch';
 import CompoundMaster from '@/model/CompoundMaster';
 import CompoundHistory from '@/model/CompoundHistory';
+import RawMaterial from '@/model/RawMaterial';
 import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
 import { Permission } from '@/lib/rbac/permissions';
@@ -62,6 +63,8 @@ async function createCompoundBatch(request: NextRequest) {
       weightPerBatch,
       coverCompoundProducedOn,
       skimCompoundProducedOn,
+      materialCode,
+      manualMaterialCode,
     } = body;
 
     // Validate required fields
@@ -153,6 +156,25 @@ async function createCompoundBatch(request: NextRequest) {
       return NextResponse.json(response, { status: 404 });
     }
 
+    let manualMaterialsUsed: { materialName: string; materialCode: string }[] | undefined;
+    const selectedMaterialCode = materialCode ?? manualMaterialCode;
+    if (selectedMaterialCode != null && String(selectedMaterialCode).trim() !== '') {
+      const code = String(selectedMaterialCode).trim();
+      const codeExists = await RawMaterial.exists({ materialCode: code });
+      if (!codeExists) {
+        const response: ApiResponse = {
+          success: false,
+          message: `No raw material found with material code: ${code}`,
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+      const names = master.rawMaterials || [];
+      manualMaterialsUsed = names.map((materialName) => ({
+        materialName,
+        materialCode: code,
+      }));
+    }
+
     // Calculate total inventory
     const totalInventory = batchesNum * weightPerBatchNum;
 
@@ -167,6 +189,9 @@ async function createCompoundBatch(request: NextRequest) {
       inventoryRemaining: totalInventory,
       consumed: 0,
       compoundMasterId: master._id,
+      ...(manualMaterialsUsed && manualMaterialsUsed.length > 0
+        ? { materialsUsed: manualMaterialsUsed }
+        : {}),
       ...(coverCompoundProducedOn && { coverCompoundProducedOn }),
       ...(skimCompoundProducedOn && { skimCompoundProducedOn }),
     };

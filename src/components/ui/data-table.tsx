@@ -50,6 +50,11 @@ interface DataTableProps<TData, TValue> {
   filterKey?: string;
   filterOptions?: { value: string; label: string }[];
   filterPlaceholder?: string;
+  filterAllOptionLabel?: string;
+  secondaryFilterKey?: string;
+  secondaryFilterOptions?: { value: string; label: string }[];
+  secondaryFilterPlaceholder?: string;
+  secondaryFilterAllOptionLabel?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -62,6 +67,11 @@ export function DataTable<TData, TValue>({
   filterKey,
   filterOptions,
   filterPlaceholder = 'Filter...',
+  filterAllOptionLabel = 'All Types',
+  secondaryFilterKey,
+  secondaryFilterOptions,
+  secondaryFilterPlaceholder = 'Filter...',
+  secondaryFilterAllOptionLabel = 'All Types',
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
@@ -115,8 +125,32 @@ export function DataTable<TData, TValue>({
                 <SelectValue placeholder={filterPlaceholder} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="all">{filterAllOptionLabel}</SelectItem>
                 {filterOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {secondaryFilterKey && secondaryFilterOptions && (
+            <Select
+              value={(table.getColumn(secondaryFilterKey)?.getFilterValue() as string) ?? 'all'}
+              onValueChange={(value) => {
+                if (value === 'all') {
+                  table.getColumn(secondaryFilterKey)?.setFilterValue(undefined);
+                } else {
+                  table.getColumn(secondaryFilterKey)?.setFilterValue(value);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder={secondaryFilterPlaceholder} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{secondaryFilterAllOptionLabel}</SelectItem>
+                {secondaryFilterOptions.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>

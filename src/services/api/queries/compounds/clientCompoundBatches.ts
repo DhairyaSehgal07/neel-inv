@@ -94,6 +94,8 @@ interface CreateCompoundBatchPayload {
   weightPerBatch: number;
   coverCompoundProducedOn?: string;
   skimCompoundProducedOn?: string;
+  /** When set, materialsUsed uses this code for each raw material on the master (skips DB sampling). */
+  materialCode?: string;
 }
 
 async function createCompoundBatchClient(

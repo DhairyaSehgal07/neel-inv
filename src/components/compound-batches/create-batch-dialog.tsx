@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useCreateCompoundBatchMutation } from '@/services/api/queries/compounds/clientCompoundBatches';
 import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
+import { useRawMaterialCodesQuery } from '@/services/api/queries/raw-materials/clientRawMaterials';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface CreateBatchDialogProps {
 export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDialogProps) {
   const createMutation = useCreateCompoundBatchMutation();
   const { data: compoundMasters } = useCompoundMastersQuery();
+  const { data: materialCodes, isLoading: isMaterialCodesLoading } = useRawMaterialCodesQuery();
 
   // Initialize form state
   const [formData, setFormData] = useState({
@@ -27,6 +29,8 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
     weightPerBatch: '',
     coverCompoundProducedOn: '',
     skimCompoundProducedOn: '',
+    /** Empty string = not set (use server-side resolution when production dates exist). */
+    materialCode: '',
   });
 
   // Reset form when dialog closes
@@ -39,6 +43,7 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
         weightPerBatch: '',
         coverCompoundProducedOn: '',
         skimCompoundProducedOn: '',
+        materialCode: '',
       });
     }
     onOpenChange(newOpen);
@@ -71,6 +76,15 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
       label: `${master.compoundName} (${master.compoundCode})`,
       value: master.compoundCode,
     })) || [];
+
+  const MATERIAL_CODE_AUTO = '__rt_auto_none__';
+  const materialCodeOptions = [
+    { label: 'Not set (resolve from production dates)', value: MATERIAL_CODE_AUTO },
+    ...(materialCodes || []).map((code) => ({
+      label: code,
+      value: code,
+    })),
+  ];
 
   const handleSubmit = async () => {
     if (!formData.compoundCode?.trim()) {
@@ -110,6 +124,9 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
         weightPerBatch,
         coverCompoundProducedOn: formData.coverCompoundProducedOn || undefined,
         skimCompoundProducedOn: formData.skimCompoundProducedOn || undefined,
+        ...(formData.materialCode.trim()
+          ? { materialCode: formData.materialCode.trim() }
+          : {}),
       });
 
       toast.success('Compound batch created successfully');
@@ -156,6 +173,31 @@ export default function CreateBatchDialog({ open, onOpenChange }: CreateBatchDia
             />
             <p className="text-xs text-muted-foreground mt-1">
               Auto-filled from selected compound master
+            </p>
+          </div>
+
+          <div>
+            <Label>Material code (optional)</Label>
+            <SearchSelect
+              options={materialCodeOptions}
+              value={
+                formData.materialCode
+                  ? formData.materialCode
+                  : MATERIAL_CODE_AUTO
+              }
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  materialCode: value === MATERIAL_CODE_AUTO ? '' : value,
+                })
+              }
+              placeholder={isMaterialCodesLoading ? 'Loading codes…' : 'Select a material code'}
+              className="mt-1"
+              disabled={isMaterialCodesLoading}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Choose a raw material code from the catalog, or leave unset to resolve codes from
+              production dates when available.
             </p>
           </div>
 

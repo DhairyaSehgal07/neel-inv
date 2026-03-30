@@ -19,6 +19,7 @@ interface SearchSelectProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export default function SearchSelect({
@@ -27,9 +28,10 @@ export default function SearchSelect({
   onChange,
   placeholder = 'Select',
   className,
+  disabled,
 }: SearchSelectProps) {
   return (
-    <Select value={value} onValueChange={onChange}>
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
