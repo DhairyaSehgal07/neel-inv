@@ -21,13 +21,17 @@ export default function DeleteUserDialog({
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  user: User;
+  user?: User;
 }) {
   const deleteMutation = useDeleteUserMutation();
 
+  if (!user) return null;
+
+  const targetUser = user;
+
   async function handleDelete() {
     try {
-      await deleteMutation.mutateAsync(user._id);
+      await deleteMutation.mutateAsync(targetUser._id);
       toast.success('User deleted successfully');
       onOpenChange(false);
     } catch (err) {

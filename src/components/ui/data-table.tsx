@@ -115,6 +115,8 @@ export function DataTable<TData, TValue>({
               value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
               onChange={(event) => table.getColumn(searchKey)?.setFilterValue(event.target.value)}
               className="max-w-sm"
+              autoComplete="off"
+              name="table-search"
             />
           )}
           {filterKey && filterOptions && (

@@ -203,7 +203,10 @@ export default function EditUserDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-2xl max-h-[90vh] overflow-y-auto"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <EditUserDialogForm key={user._id} user={user} onClose={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>

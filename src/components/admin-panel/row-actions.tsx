@@ -3,19 +3,15 @@
 import { Row } from '@tanstack/react-table';
 import { Button } from '@/components/ui/button';
 import { Edit2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
-import EditUserDialog from './edit-dialog';
-import DeleteUserDialog from './delete-dialog';
 import { User } from '@/types/user';
 import { useSession } from 'next-auth/react';
+import { useAdminPanelActions } from './admin-actions-context';
 
 export function DataTableRowActions({ row }: { row: Row<User> }) {
   const user = row.original;
   const { data: session } = useSession();
   const currentUserId = session?.user?.id;
-
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openDelete, setOpenDelete] = useState(false);
+  const { onEditUser, onDeleteUser } = useAdminPanelActions();
 
   // Don't allow editing/deleting yourself
   const isCurrentUser = currentUserId === user._id;
@@ -28,9 +24,7 @@ export function DataTableRowActions({ row }: { row: Row<User> }) {
         size="icon"
         onClick={(e) => {
           e.stopPropagation();
-          // Defer open so Radix Dialog does not treat the same pointer sequence as an
-          // outside dismiss (common in production builds; see radix-ui/primitives#2122).
-          window.setTimeout(() => setOpenEdit(true), 0);
+          onEditUser(user);
         }}
         disabled={isCurrentUser}
         title={isCurrentUser ? 'Cannot edit your own account' : 'Edit user'}
@@ -44,16 +38,13 @@ export function DataTableRowActions({ row }: { row: Row<User> }) {
         size="icon"
         onClick={(e) => {
           e.stopPropagation();
-          window.setTimeout(() => setOpenDelete(true), 0);
+          onDeleteUser(user);
         }}
         disabled={isCurrentUser}
         title={isCurrentUser ? 'Cannot delete your own account' : 'Delete user'}
       >
         <Trash2 className="h-4 w-4" />
       </Button>
-
-      <EditUserDialog open={openEdit} onOpenChange={setOpenEdit} user={user} />
-      <DeleteUserDialog open={openDelete} onOpenChange={setOpenDelete} user={user} />
     </div>
   );
 }
