@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import UserModel from '@/model/User';
+import { ALL_PERMISSIONS } from '@/lib/rbac/permissions';
 
 type ConnectionObject = {
   isConnected?: boolean;
@@ -23,6 +24,7 @@ async function seedUsers() {
         mobileNumber: '8437702351',
         password: hashedPasswordAdmin,
         role: 'Admin',
+        permissions: ALL_PERMISSIONS,
         isActive: true,
       });
       console.log('🌱 Admin user seeded successfully');

@@ -3,11 +3,13 @@
 import { useState, useEffect } from 'react';
 import { CompoundBatchDoc } from '@/model/CompoundBatch';
 import { useUpdateCompoundBatchMutation } from '@/services/api/queries/compounds/clientCompoundBatches';
+import { useRawMaterialCodesQuery } from '@/services/api/queries/raw-materials/clientRawMaterials';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import SearchSelect from '@/components/search-select';
 
 interface EditBatchDialogProps {
   open: boolean;
@@ -17,6 +19,8 @@ interface EditBatchDialogProps {
 
 export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatchDialogProps) {
   const updateMutation = useUpdateCompoundBatchMutation();
+  const { data: materialCodes, isLoading: isMaterialCodesLoading } = useRawMaterialCodesQuery();
+  const MATERIAL_CODE_AUTO = '__rt_auto_none__';
 
   // Initialize form state from batch prop
   const [formData, setFormData] = useState({
@@ -26,6 +30,7 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
     batches: batch?.batches?.toString() || '',
     weightPerBatch: batch?.weightPerBatch?.toString() || '',
     reducedQty: '',
+    materialCode: batch?.materialsUsed?.[0]?.materialCode || '',
   });
 
   // Reset form when batch changes
@@ -38,9 +43,18 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
         batches: batch.batches?.toString() || '',
         weightPerBatch: batch.weightPerBatch?.toString() || '',
         reducedQty: '',
+        materialCode: batch.materialsUsed?.[0]?.materialCode || '',
       });
     }
   }, [open, batch]);
+
+  const materialCodeOptions = [
+    { label: 'Not set (resolve from production dates)', value: MATERIAL_CODE_AUTO },
+    ...(materialCodes || []).map((code) => ({
+      label: code,
+      value: code,
+    })),
+  ];
 
   const handleSubmit = async () => {
     if (!formData.compoundCode?.trim()) {
@@ -96,6 +110,8 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
           batches,
           weightPerBatch,
           ...(reducedQty !== undefined && { reducedQty }),
+          // Keep parity with create flow: empty string means "auto-resolve"
+          materialCode: formData.materialCode.trim(),
         },
       });
       toast.success('Compound batch updated successfully');
@@ -135,6 +151,27 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
               placeholder="e.g., Nk-5, Nk-8"
               className="mt-1"
             />
+          </div>
+
+          <div>
+            <Label>Material code (optional)</Label>
+            <SearchSelect
+              options={materialCodeOptions}
+              value={formData.materialCode ? formData.materialCode : MATERIAL_CODE_AUTO}
+              onChange={(value) =>
+                setFormData({
+                  ...formData,
+                  materialCode: value === MATERIAL_CODE_AUTO ? '' : value,
+                })
+              }
+              placeholder={isMaterialCodesLoading ? 'Loading codes…' : 'Select a material code'}
+              className="mt-1"
+              disabled={isMaterialCodesLoading}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Choose a raw material code from the catalog, or leave unset to resolve codes from
+              production dates when available.
+            </p>
           </div>
 
           <div>

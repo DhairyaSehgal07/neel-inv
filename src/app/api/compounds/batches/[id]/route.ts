@@ -6,6 +6,8 @@ import { ApiResponse } from '@/types/apiResponse';
 import dbConnect from '@/lib/dbConnect';
 import CompoundBatch from '@/model/CompoundBatch';
 import CompoundMaster from '@/model/CompoundMaster';
+import RawMaterial from '@/model/RawMaterial';
+import { resolveMaterialsUsed } from '@/lib/helpers/compound-utils';
 
 /**
  * Update compound batch handler
@@ -67,6 +69,45 @@ async function updateCompoundBatchHandler(
 
     if (body.compoundName !== undefined) {
       updateData.compoundName = body.compoundName;
+    }
+
+    if (body.materialCode !== undefined) {
+      const providedMaterialCode = String(body.materialCode ?? '').trim();
+      const nextCompoundCode = updateData.compoundCode ?? existingBatch.compoundCode;
+      const masterForMaterials = await CompoundMaster.findOne({ compoundCode: nextCompoundCode });
+
+      if (!masterForMaterials) {
+        const response: ApiResponse = {
+          success: false,
+          message: `CompoundMaster not found for code: ${nextCompoundCode}`,
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      if (providedMaterialCode) {
+        const codeExists = await RawMaterial.exists({ materialCode: providedMaterialCode });
+        if (!codeExists) {
+          const response: ApiResponse = {
+            success: false,
+            message: `No raw material found with material code: ${providedMaterialCode}`,
+          };
+          return NextResponse.json(response, { status: 400 });
+        }
+
+        const names = masterForMaterials.rawMaterials || [];
+        updateData.materialsUsed = names.map((materialName: string) => ({
+          materialName,
+          materialCode: providedMaterialCode,
+        }));
+      } else {
+        // Empty materialCode means "auto-resolve" using production date (same intent as create flow).
+        const productionDate =
+          existingBatch.coverCompoundProducedOn || existingBatch.skimCompoundProducedOn || existingBatch.date;
+        const names = masterForMaterials.rawMaterials || [];
+        updateData.materialsUsed = productionDate
+          ? await resolveMaterialsUsed(names, productionDate)
+          : names.map((materialName: string) => ({ materialName, materialCode: '' }));
+      }
     }
 
     // Date should not be updated - it represents when the compound was consumed

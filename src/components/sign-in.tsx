@@ -25,6 +25,22 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 
+function getAuthErrorMessage(errorCode?: string | null): string | null {
+  if (!errorCode) return null;
+
+  switch (errorCode) {
+    case 'CredentialsSignin':
+    case 'Configuration':
+      return 'Invalid mobile number or password. Please try again.';
+    case 'AccessDenied':
+      return 'You do not have permission to sign in.';
+    case 'SessionRequired':
+      return 'Please sign in to continue.';
+    default:
+      return 'Authentication failed. Please try again.';
+  }
+}
+
 export function SignIn() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,7 +70,7 @@ export function SignIn() {
       });
 
       if (result?.error) {
-        setError(result.error);
+        setError(getAuthErrorMessage(result.error));
         setIsLoading(false);
       } else if (result?.ok) {
         router.push(callbackUrl);
@@ -79,7 +95,7 @@ export function SignIn() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {(error || errorParam) && (
               <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
-                {error || 'Authentication failed. Please check your credentials.'}
+                {error || getAuthErrorMessage(errorParam)}
               </div>
             )}
 

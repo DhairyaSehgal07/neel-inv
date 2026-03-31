@@ -31,6 +31,7 @@ async function updateUserClient({
     role?: string;
     permissions?: string[];
     isActive?: boolean;
+    password?: string;
   };
 }): Promise<User> {
   const response = await api.put<ApiResponse<User>>(`/api/users/${id}`, payload);

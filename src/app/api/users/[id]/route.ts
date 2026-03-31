@@ -6,6 +6,7 @@ import { withRBACParams } from '@/lib/rbac/rbac-params';
 import { Permission } from '@/lib/rbac/permissions';
 import { ALL_PERMISSIONS } from '@/lib/rbac/permissions';
 import { Role } from '@/model/User';
+import bcrypt from 'bcryptjs';
 
 // PUT /api/users/[id] - Update user (role, permissions, isActive)
 async function updateUser(
@@ -19,7 +20,7 @@ async function updateUser(
     const { id } = resolvedParams;
     const body = await request.json();
 
-    const { role, permissions, isActive } = body;
+    const { role, permissions, isActive, password } = body;
 
     // Validate role if provided
     if (role !== undefined) {
@@ -65,6 +66,24 @@ async function updateUser(
       return NextResponse.json(response, { status: 400 });
     }
 
+    // Validate password if provided
+    if (password !== undefined) {
+      if (typeof password !== 'string') {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Password must be a string',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+      if (password.trim().length < 6) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'Password must be at least 6 characters long',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+    }
+
     // Get current session to prevent self-modification of critical fields
     const { auth } = await import('@/auth');
     const session = await auth();
@@ -103,11 +122,15 @@ async function updateUser(
       role?: Role;
       permissions?: string[];
       isActive?: boolean;
+      password?: string;
     } = {};
 
     if (role !== undefined) updateData.role = role;
     if (permissions !== undefined) updateData.permissions = permissions;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (password !== undefined && password.trim()) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
 
     // Update user
     const updatedUser = await UserModel.findByIdAndUpdate(

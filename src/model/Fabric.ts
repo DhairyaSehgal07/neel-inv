@@ -23,10 +23,6 @@ const FabricSchema = new Schema<FabricDoc>(
   { timestamps: true }
 );
 
-/* ----------------- INDEXES ------------------ */
-// Index for _id lookups (already exists by default, but explicit for clarity)
-FabricSchema.index({ _id: 1 });
-
 const Fabric =
   (mongoose.models.Fabric as mongoose.Model<FabricDoc>) ||
   mongoose.model<FabricDoc>('Fabric', FabricSchema);

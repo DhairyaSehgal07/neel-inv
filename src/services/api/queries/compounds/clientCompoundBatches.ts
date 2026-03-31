@@ -49,6 +49,8 @@ interface UpdateCompoundBatchPayload {
   batches?: number;
   weightPerBatch?: number;
   reducedQty?: number;
+  /** When set, override materialsUsed with this code; empty string resets to auto-resolve by date. */
+  materialCode?: string;
 }
 
 async function updateCompoundBatchClient(

@@ -130,8 +130,7 @@ BeltSchema.index({ status: 1, createdAt: -1 });
 // Text indexes for search functionality (beltNumber, orderNumber, buyerName)
 BeltSchema.index({ beltNumber: 'text', orderNumber: 'text', buyerName: 'text' });
 
-// Individual indexes for regex searches (case-insensitive searches)
-BeltSchema.index({ beltNumber: 1 });
+// Individual indexes for regex searches (beltNumber is already indexed via unique: true)
 BeltSchema.index({ orderNumber: 1 });
 BeltSchema.index({ buyerName: 1 });
 
