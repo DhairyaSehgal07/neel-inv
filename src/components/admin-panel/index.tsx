@@ -50,6 +50,7 @@ export default function AdminPanel() {
         data={data || []}
         searchKey="name"
         searchPlaceholder="Search by name or mobile number..."
+        getRowId={(row) => row._id}
       />
 
       <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />

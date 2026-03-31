@@ -23,6 +23,8 @@ module.exports = {
     'scope-case': [2, 'always', 'lower-case'],
     'subject-empty': [2, 'never'],
     'subject-full-stop': [2, 'never', '.'],
+    /** Allow natural phrasing (e.g. "fix: Alert dialog …"); @commitlint/config-conventional forbids title case by default */
+    'subject-case': [0],
     'header-max-length': [2, 'always', 100],
   },
 };

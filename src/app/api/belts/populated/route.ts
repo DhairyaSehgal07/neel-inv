@@ -85,6 +85,7 @@ async function populateBatchData(
 }
 
 async function getPopulatedBelts(request: NextRequest) {
+  void request;
   try {
     await dbConnect();
 

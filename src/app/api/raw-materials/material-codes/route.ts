@@ -9,7 +9,8 @@ import RawMaterial from '@/model/RawMaterial';
  * GET /api/raw-materials/material-codes
  * Returns distinct material codes (sorted) for dropdowns (e.g. compound batch creation).
  */
-async function getMaterialCodes(_request: NextRequest) {
+async function getMaterialCodes(request: NextRequest) {
+  void request;
   try {
     await dbConnect();
 

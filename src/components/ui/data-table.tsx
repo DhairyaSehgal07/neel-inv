@@ -5,6 +5,7 @@
 import {
   ColumnDef,
   ColumnFiltersState,
+  Row,
   SortingState,
   VisibilityState,
   flexRender,
@@ -55,6 +56,8 @@ interface DataTableProps<TData, TValue> {
   secondaryFilterOptions?: { value: string; label: string }[];
   secondaryFilterPlaceholder?: string;
   secondaryFilterAllOptionLabel?: string;
+  /** Stable row ids (e.g. database _id) so row state survives filter/sort/refetch. */
+  getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
 }
 
 export function DataTable<TData, TValue>({
@@ -72,15 +75,18 @@ export function DataTable<TData, TValue>({
   secondaryFilterOptions,
   secondaryFilterPlaceholder = 'Filter...',
   secondaryFilterAllOptionLabel = 'All Types',
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
 
+  /* eslint-disable react-hooks/incompatible-library -- TanStack Table useReactTable opts out of React Compiler memoization by design */
   const table = useReactTable({
     data,
     columns,
+    getRowId,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -96,6 +102,7 @@ export function DataTable<TData, TValue>({
       rowSelection,
     },
   });
+  /* eslint-enable react-hooks/incompatible-library */
 
   return (
     <div className="w-full space-y-4 min-w-0">

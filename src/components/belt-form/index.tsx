@@ -11,15 +11,10 @@ import { CompoundInfoStep } from './compound-info-step';
 import { ProductionDatesStep } from './production-dates-step';
 import { ReviewAndSubmitStep } from './review-and-submit-step';
 import { BeltFormData } from '@/types/belt';
-import { useSession } from 'next-auth/react';
 
 // Main Form Component
 export const GeneratedForm = () => {
   const [activeTab, setActiveTab] = useState('step1');
-    const { data: session } = useSession();
-    const isAdmin = session?.user?.role === 'Admin';
-    const isOperator = session?.user?.role === 'Operator';
-
 
   const form = useForm<BeltFormData>({
     defaultValues: {
