@@ -57,13 +57,7 @@ export default function AdminPanel() {
           </Button>
         </div>
 
-        <DataTable
-          columns={columns}
-          data={data || []}
-          searchKey="name"
-          searchPlaceholder="Search by name or mobile number..."
-          getRowId={(row) => row._id}
-        />
+        <DataTable columns={columns} data={data || []} getRowId={(row) => row._id} />
 
         <CreateUserDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
         <EditUserDialog

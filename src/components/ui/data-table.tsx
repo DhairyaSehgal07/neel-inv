@@ -58,6 +58,12 @@ interface DataTableProps<TData, TValue> {
   secondaryFilterAllOptionLabel?: string;
   /** Stable row ids (e.g. database _id) so row state survives filter/sort/refetch. */
   getRowId?: (originalRow: TData, index: number, parent?: Row<TData>) => string;
+  /**
+   * When true (e.g. a modal/dialog is open above the table), the search field is disabled
+   * and the search filter is cleared on open so the first text field cannot receive
+   * browser/password-manager autofill (e.g. phone numbers) into the table filter.
+   */
+  modalOverlayOpen?: boolean;
 }
 
 export function DataTable<TData, TValue>({
@@ -76,11 +82,24 @@ export function DataTable<TData, TValue>({
   secondaryFilterPlaceholder = 'Filter...',
   secondaryFilterAllOptionLabel = 'All Types',
   getRowId,
+  modalOverlayOpen = false,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [searchFieldUnlocked, setSearchFieldUnlocked] = React.useState(false);
+  const searchInputId = React.useId();
+  const searchInputNameRef = React.useRef(`st-${Math.random().toString(36).slice(2)}`);
+  const prevModalOpenRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (modalOverlayOpen && !prevModalOpenRef.current && searchKey) {
+      setSearchFieldUnlocked(false);
+      setColumnFilters((prev) => prev.filter((f) => f.id !== searchKey));
+    }
+    prevModalOpenRef.current = modalOverlayOpen;
+  }, [modalOverlayOpen, searchKey]);
 
   /* eslint-disable react-hooks/incompatible-library -- TanStack Table useReactTable opts out of React Compiler memoization by design */
   const table = useReactTable({
@@ -111,12 +130,21 @@ export function DataTable<TData, TValue>({
         <div className="flex items-center gap-4 flex-1 min-w-0">
           {searchKey && (
             <Input
+              id={searchInputId}
+              type="search"
               placeholder={searchPlaceholder}
               value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
               onChange={(event) => table.getColumn(searchKey)?.setFilterValue(event.target.value)}
               className="max-w-sm"
               autoComplete="off"
-              name="table-search"
+              name={searchInputNameRef.current}
+              disabled={modalOverlayOpen}
+              readOnly={!searchFieldUnlocked && !modalOverlayOpen}
+              onFocus={() => setSearchFieldUnlocked(true)}
+              data-lpignore="true"
+              data-1p-ignore="true"
+              data-bwignore
+              data-form-type="other"
             />
           )}
           {filterKey && filterOptions && (
