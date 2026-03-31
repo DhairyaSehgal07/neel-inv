@@ -23,9 +23,15 @@ export function DataTableRowActions({ row }: { row: Row<User> }) {
   return (
     <div className="flex gap-2">
       <Button
+        type="button"
         variant="outline"
         size="icon"
-        onClick={() => setOpenEdit(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Defer open so Radix Dialog does not treat the same pointer sequence as an
+          // outside dismiss (common in production builds; see radix-ui/primitives#2122).
+          window.setTimeout(() => setOpenEdit(true), 0);
+        }}
         disabled={isCurrentUser}
         title={isCurrentUser ? 'Cannot edit your own account' : 'Edit user'}
       >
@@ -33,9 +39,13 @@ export function DataTableRowActions({ row }: { row: Row<User> }) {
       </Button>
 
       <Button
+        type="button"
         variant="destructive"
         size="icon"
-        onClick={() => setOpenDelete(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          window.setTimeout(() => setOpenDelete(true), 0);
+        }}
         disabled={isCurrentUser}
         title={isCurrentUser ? 'Cannot delete your own account' : 'Delete user'}
       >
