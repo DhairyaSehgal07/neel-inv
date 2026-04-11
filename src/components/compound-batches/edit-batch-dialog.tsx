@@ -3,13 +3,13 @@
 import { useState, useEffect } from 'react';
 import { CompoundBatchDoc } from '@/model/CompoundBatch';
 import { useUpdateCompoundBatchMutation } from '@/services/api/queries/compounds/clientCompoundBatches';
-import { useRawMaterialCodesQuery } from '@/services/api/queries/raw-materials/clientRawMaterials';
+import { useCompoundMastersQuery } from '@/services/api/queries/compounds/clientCompoundMasters';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import SearchSelect from '@/components/search-select';
+import { MaterialRowsFields, MaterialRow } from './material-rows-fields';
 
 interface EditBatchDialogProps {
   open: boolean;
@@ -17,12 +17,30 @@ interface EditBatchDialogProps {
   batch?: CompoundBatchDoc;
 }
 
+function initialMaterialRows(
+  batch: CompoundBatchDoc | undefined,
+  compoundMasters: { compoundCode: string; rawMaterials: string[] }[] | undefined
+): MaterialRow[] {
+  if (!batch) {
+    return [{ materialName: '', materialCode: '' }];
+  }
+  if (batch.materialsUsed && batch.materialsUsed.length > 0) {
+    return batch.materialsUsed.map((m) => ({
+      materialName: m.materialName,
+      materialCode: m.materialCode,
+    }));
+  }
+  const master = compoundMasters?.find((m) => m.compoundCode === batch.compoundCode);
+  if (master?.rawMaterials?.length) {
+    return master.rawMaterials.map((name) => ({ materialName: name, materialCode: '' }));
+  }
+  return [{ materialName: '', materialCode: '' }];
+}
+
 export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatchDialogProps) {
   const updateMutation = useUpdateCompoundBatchMutation();
-  const { data: materialCodes, isLoading: isMaterialCodesLoading } = useRawMaterialCodesQuery();
-  const MATERIAL_CODE_AUTO = '__rt_auto_none__';
+  const { data: compoundMasters } = useCompoundMastersQuery();
 
-  // Initialize form state from batch prop
   const [formData, setFormData] = useState({
     compoundCode: batch?.compoundCode || '',
     compoundName: batch?.compoundName || '',
@@ -30,10 +48,9 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
     batches: batch?.batches?.toString() || '',
     weightPerBatch: batch?.weightPerBatch?.toString() || '',
     reducedQty: '',
-    materialCode: batch?.materialsUsed?.[0]?.materialCode || '',
+    materialRows: [{ materialName: '', materialCode: '' }] as MaterialRow[],
   });
 
-  // Reset form when batch changes
   useEffect(() => {
     if (open && batch) {
       setFormData({
@@ -43,18 +60,10 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
         batches: batch.batches?.toString() || '',
         weightPerBatch: batch.weightPerBatch?.toString() || '',
         reducedQty: '',
-        materialCode: batch.materialsUsed?.[0]?.materialCode || '',
+        materialRows: initialMaterialRows(batch, compoundMasters),
       });
     }
-  }, [open, batch]);
-
-  const materialCodeOptions = [
-    { label: 'Not set (resolve from production dates)', value: MATERIAL_CODE_AUTO },
-    ...(materialCodes || []).map((code) => ({
-      label: code,
-      value: code,
-    })),
-  ];
+  }, [open, batch, compoundMasters]);
 
   const handleSubmit = async () => {
     if (!formData.compoundCode?.trim()) {
@@ -79,7 +88,6 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
       return;
     }
 
-    // Validate reduced quantity if provided
     let reducedQty: number | undefined;
     if (formData.reducedQty?.trim()) {
       reducedQty = parseFloat(formData.reducedQty);
@@ -92,6 +100,22 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
         return;
       }
     }
+
+    for (const r of formData.materialRows) {
+      const n = r.materialName.trim();
+      const c = r.materialCode.trim();
+      if ((n && !c) || (!n && c)) {
+        toast.error('For each raw material row, fill both name and code, or leave both empty.');
+        return;
+      }
+    }
+
+    const materialsUsed = formData.materialRows
+      .map((r) => ({
+        materialName: r.materialName.trim(),
+        materialCode: r.materialCode.trim(),
+      }))
+      .filter((r) => r.materialName && r.materialCode);
 
     try {
       let batchId: string;
@@ -110,14 +134,12 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
           batches,
           weightPerBatch,
           ...(reducedQty !== undefined && { reducedQty }),
-          // Keep parity with create flow: empty string means "auto-resolve"
-          materialCode: formData.materialCode.trim(),
+          materialsUsed: materialsUsed.length > 0 ? materialsUsed : [],
         },
       });
       toast.success('Compound batch updated successfully');
       onOpenChange(false);
     } catch (err) {
-      // Don't close dialog on error - let user see the error and fix the issue
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       toast.error(`Failed to update compound batch: ${errorMessage}`);
     }
@@ -153,26 +175,11 @@ export default function EditBatchDialog({ open, onOpenChange, batch }: EditBatch
             />
           </div>
 
-          <div>
-            <Label>Material code (optional)</Label>
-            <SearchSelect
-              options={materialCodeOptions}
-              value={formData.materialCode ? formData.materialCode : MATERIAL_CODE_AUTO}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  materialCode: value === MATERIAL_CODE_AUTO ? '' : value,
-                })
-              }
-              placeholder={isMaterialCodesLoading ? 'Loading codes…' : 'Select a material code'}
-              className="mt-1"
-              disabled={isMaterialCodesLoading}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Choose a raw material code from the catalog, or leave unset to resolve codes from
-              production dates when available.
-            </p>
-          </div>
+          <MaterialRowsFields
+            rows={formData.materialRows}
+            onChange={(materialRows) => setFormData((prev) => ({ ...prev, materialRows }))}
+            disabled={isLoading}
+          />
 
           <div>
             <Label>Date (YYYY-MM-DD) *</Label>

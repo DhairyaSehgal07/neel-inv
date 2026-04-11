@@ -164,3 +164,29 @@ export async function resolveMaterialsUsed(
 
   return materialsUsed;
 }
+
+/**
+ * Validates explicit materialsUsed rows from API payloads (create/update compound batch).
+ * Stored as in MongoDB: `{ materialName, materialCode }` per item only (no catalog lookup).
+ */
+export function validateMaterialsUsedPayload(
+  entries: unknown
+): { ok: true; materialsUsed: MaterialUsedResolved[] } | { ok: false; message: string } {
+  if (!Array.isArray(entries) || entries.length === 0) {
+    return { ok: false, message: 'materialsUsed must be a non-empty array' };
+  }
+  const materialsUsed: MaterialUsedResolved[] = [];
+  for (const item of entries) {
+    if (!item || typeof item !== 'object') {
+      return { ok: false, message: 'Each material entry must be an object' };
+    }
+    const rec = item as { materialName?: unknown; materialCode?: unknown };
+    const materialName = String(rec.materialName ?? '').trim();
+    const materialCode = String(rec.materialCode ?? '').trim();
+    if (!materialName || !materialCode) {
+      return { ok: false, message: 'Each material entry must include materialName and materialCode' };
+    }
+    materialsUsed.push({ materialName, materialCode });
+  }
+  return { ok: true, materialsUsed };
+}

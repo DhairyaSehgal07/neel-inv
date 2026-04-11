@@ -43,13 +43,20 @@ export function useCompoundBatchesQuery(params?: FetchCompoundBatchesParams) {
   });
 }
 
+export interface MaterialUsedPayload {
+  materialName: string;
+  materialCode: string;
+}
+
 interface UpdateCompoundBatchPayload {
   compoundCode?: string;
   compoundName?: string;
   batches?: number;
   weightPerBatch?: number;
   reducedQty?: number;
-  /** When set, override materialsUsed with this code; empty string resets to auto-resolve by date. */
+  /** Explicit raw material rows. Empty array resets to auto-resolve from production dates. */
+  materialsUsed?: MaterialUsedPayload[];
+  /** When set, override materialsUsed with this code for all master raw materials; empty string resets to auto-resolve. */
   materialCode?: string;
 }
 
@@ -96,6 +103,8 @@ interface CreateCompoundBatchPayload {
   weightPerBatch: number;
   coverCompoundProducedOn?: string;
   skimCompoundProducedOn?: string;
+  /** Explicit raw material rows (name + code). When omitted, legacy materialCode or auto-resolve applies. */
+  materialsUsed?: MaterialUsedPayload[];
   /** When set, materialsUsed uses this code for each raw material on the master (skips DB sampling). */
   materialCode?: string;
 }

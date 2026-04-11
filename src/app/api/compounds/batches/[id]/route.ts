@@ -7,7 +7,7 @@ import dbConnect from '@/lib/dbConnect';
 import CompoundBatch from '@/model/CompoundBatch';
 import CompoundMaster from '@/model/CompoundMaster';
 import RawMaterial from '@/model/RawMaterial';
-import { resolveMaterialsUsed } from '@/lib/helpers/compound-utils';
+import { resolveMaterialsUsed, validateMaterialsUsedPayload } from '@/lib/helpers/compound-utils';
 
 /**
  * Update compound batch handler
@@ -71,15 +71,53 @@ async function updateCompoundBatchHandler(
       updateData.compoundName = body.compoundName;
     }
 
-    if (body.materialCode !== undefined) {
-      const providedMaterialCode = String(body.materialCode ?? '').trim();
-      const nextCompoundCode = updateData.compoundCode ?? existingBatch.compoundCode;
-      const masterForMaterials = await CompoundMaster.findOne({ compoundCode: nextCompoundCode });
+    const nextCompoundCodeForMaterials = updateData.compoundCode ?? existingBatch.compoundCode;
+
+    if (body.materialsUsed !== undefined && body.materialsUsed !== null) {
+      if (!Array.isArray(body.materialsUsed)) {
+        const response: ApiResponse = {
+          success: false,
+          message: 'materialsUsed must be an array',
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      const masterForMaterials = await CompoundMaster.findOne({ compoundCode: nextCompoundCodeForMaterials });
 
       if (!masterForMaterials) {
         const response: ApiResponse = {
           success: false,
-          message: `CompoundMaster not found for code: ${nextCompoundCode}`,
+          message: `CompoundMaster not found for code: ${nextCompoundCodeForMaterials}`,
+        };
+        return NextResponse.json(response, { status: 400 });
+      }
+
+      if (body.materialsUsed.length > 0) {
+        const validated = validateMaterialsUsedPayload(body.materialsUsed);
+        if (!validated.ok) {
+          const response: ApiResponse = {
+            success: false,
+            message: validated.message,
+          };
+          return NextResponse.json(response, { status: 400 });
+        }
+        updateData.materialsUsed = validated.materialsUsed;
+      } else {
+        const productionDate =
+          existingBatch.coverCompoundProducedOn || existingBatch.skimCompoundProducedOn || existingBatch.date;
+        const names = masterForMaterials.rawMaterials || [];
+        updateData.materialsUsed = productionDate
+          ? await resolveMaterialsUsed(names, productionDate)
+          : names.map((materialName: string) => ({ materialName, materialCode: '' }));
+      }
+    } else if (body.materialCode !== undefined) {
+      const providedMaterialCode = String(body.materialCode ?? '').trim();
+      const masterForMaterials = await CompoundMaster.findOne({ compoundCode: nextCompoundCodeForMaterials });
+
+      if (!masterForMaterials) {
+        const response: ApiResponse = {
+          success: false,
+          message: `CompoundMaster not found for code: ${nextCompoundCodeForMaterials}`,
         };
         return NextResponse.json(response, { status: 400 });
       }
@@ -100,7 +138,6 @@ async function updateCompoundBatchHandler(
           materialCode: providedMaterialCode,
         }));
       } else {
-        // Empty materialCode means "auto-resolve" using production date (same intent as create flow).
         const productionDate =
           existingBatch.coverCompoundProducedOn || existingBatch.skimCompoundProducedOn || existingBatch.date;
         const names = masterForMaterials.rawMaterials || [];

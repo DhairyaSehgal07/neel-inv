@@ -7,6 +7,7 @@ import RawMaterial from '@/model/RawMaterial';
 import { ApiResponse } from '@/types/apiResponse';
 import { withRBAC } from '@/lib/rbac';
 import { Permission } from '@/lib/rbac/permissions';
+import { validateMaterialsUsedPayload } from '@/lib/helpers/compound-utils';
 
 async function getCompoundBatches(request: NextRequest) {
   try {
@@ -63,6 +64,7 @@ async function createCompoundBatch(request: NextRequest) {
       weightPerBatch,
       coverCompoundProducedOn,
       skimCompoundProducedOn,
+      materialsUsed: materialsUsedBody,
       materialCode,
       manualMaterialCode,
     } = body;
@@ -157,22 +159,45 @@ async function createCompoundBatch(request: NextRequest) {
     }
 
     let manualMaterialsUsed: { materialName: string; materialCode: string }[] | undefined;
-    const selectedMaterialCode = materialCode ?? manualMaterialCode;
-    if (selectedMaterialCode != null && String(selectedMaterialCode).trim() !== '') {
-      const code = String(selectedMaterialCode).trim();
-      const codeExists = await RawMaterial.exists({ materialCode: code });
-      if (!codeExists) {
+
+    if (materialsUsedBody !== undefined && materialsUsedBody !== null) {
+      if (!Array.isArray(materialsUsedBody)) {
         const response: ApiResponse = {
           success: false,
-          message: `No raw material found with material code: ${code}`,
+          message: 'materialsUsed must be an array',
         };
         return NextResponse.json(response, { status: 400 });
       }
-      const names = master.rawMaterials || [];
-      manualMaterialsUsed = names.map((materialName) => ({
-        materialName,
-        materialCode: code,
-      }));
+      if (materialsUsedBody.length > 0) {
+        const validated = validateMaterialsUsedPayload(materialsUsedBody);
+        if (!validated.ok) {
+          const response: ApiResponse = {
+            success: false,
+            message: validated.message,
+          };
+          return NextResponse.json(response, { status: 400 });
+        }
+        manualMaterialsUsed = validated.materialsUsed;
+      }
+      // Empty array: omit manualMaterialsUsed so pre-save can resolve from production dates
+    } else {
+      const selectedMaterialCode = materialCode ?? manualMaterialCode;
+      if (selectedMaterialCode != null && String(selectedMaterialCode).trim() !== '') {
+        const code = String(selectedMaterialCode).trim();
+        const codeExists = await RawMaterial.exists({ materialCode: code });
+        if (!codeExists) {
+          const response: ApiResponse = {
+            success: false,
+            message: `No raw material found with material code: ${code}`,
+          };
+          return NextResponse.json(response, { status: 400 });
+        }
+        const names = master.rawMaterials || [];
+        manualMaterialsUsed = names.map((materialName) => ({
+          materialName,
+          materialCode: code,
+        }));
+      }
     }
 
     // Calculate total inventory
